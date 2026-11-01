@@ -132,6 +132,98 @@ provider to generate an answer. Local retrieval is lexical, not semantic; a
 missing match is reported as insufficient information, and generated answers
 may still be inaccurate.
 
+## Capability-aware operations
+
+`awoodahaModelka()` reports capabilities implemented by the configured adapter
+without exposing credentials. It does not probe a provider or guarantee that a
+specific model or account accepts a request. `doorModel()` can filter configured
+providers using `capability` and `allowedModels`; selection is deterministic and
+never retries on another provider:
+
+```js
+const report = ai.awoodahaModelka();
+const selection = ai.doorModel({
+  task: "reasoning",
+  capability: "text-generation"
+});
+```
+
+By default, the seven bundled adapters expose text generation, conversation,
+and their streaming interface. The bundled adapters do **not** currently
+implement voice, image/document analysis, image/video generation, structured
+output, embeddings, dialect detection, or native tool calling. Those operations
+reject with an explicit unsupported-capability error rather than pretending a
+text request completed them.
+
+Custom registered adapters can expose these optional operations and declare
+model capabilities. The declaration is intersected with methods actually
+implemented by the adapter:
+
+```js
+ai.providers.register("my-adapter", {
+  model: "my-configured-model",
+  capabilities: ["text-generation", "image-understanding"],
+  generate: async ({ prompt }) => ({ text: prompt }),
+  analyzeImage: async ({ image, prompt }) => ({
+    text: "Adapter-specific image result"
+  })
+});
+
+const capabilityReport = ai.awoodahaModelka({ provider: "my-adapter" });
+const image = await ai.falanqeeSawir({
+  provider: "my-adapter",
+  image: imageBytes,
+  prompt: "Describe this image in Somali."
+});
+```
+
+Optional adapter methods are `transcribeAudio`, `synthesizeSpeech`,
+`analyzeImage`, `analyzeDocument`, `generateImage`, `generateVideo`,
+`getVideoJob`, `getVideoResult`, `cancelVideoJob`, `generateStructured`,
+`createEmbedding`, `generateWithTools`, and `detectDialect`. Capability names
+match the strings returned by `awoodahaModelka()`. A provider configuration's
+`capabilities` array can further restrict the adapter's declared features.
+This is adapter-level support metadata, not automatic model discovery; configure
+only capabilities you have verified for the exact model and account.
+
+`hadalUqor()` and `qoraalUhadal()` pass audio/text and language options to an
+adapter; format, MIME-type, voice, and language support remain adapter-specific.
+Media values are limited to 25 MB by the SDK. Audio and image inputs need a
+matching MIME type (provided directly, by a `Blob`/`File`, or image data URI);
+documents accept text MIME types, PDF, RTF, or DOCX metadata. MIME metadata
+cannot guarantee the bytes match the claimed format. No Somali voice support
+is claimed by the bundled adapters. `ogaawLahjad()` reports `unknown` unless a
+registered adapter declares and implements dialect detection.
+
+`wakiilAI()` requires an adapter implementing `generateWithTools` and only
+executes functions explicitly supplied in `tools`. Tool arguments are checked
+against the supported JSON Schema subset. Tools marked `requiresApproval` need
+an `approve` callback; no shell or arbitrary-code tool is provided. Set
+`maxSteps` (1–10), `maxExecutionMs` (1–120000), and optionally pass an
+`AbortSignal`. Cancellation depends on the adapter/tool honoring the signal.
+Memory is opt-in: pass a JSON-compatible `memory` array and retain the returned
+array yourself; the SDK does not persist it.
+
+`sooSaarJSON()` requires an adapter's structured-output implementation and
+validates parsed output. Its validator supports basic JSON Schema types,
+properties, required fields, items, enums, numeric/string bounds, and
+`additionalProperties`; unsupported schema keywords are rejected.
+
+`sameeEmbedding()` supports one or multiple texts through an adapter's
+`createEmbedding` method. `isuEegEmbedding()` computes cosine similarity for
+same-dimension, non-zero vectors. `raadsoAqoon()` uses local lexical retrieval
+by default; `strategy: "semantic"` requires an embedding-capable adapter and an
+explicit `embeddingModel`. An optional `vectorStore` can implement
+`search(vector, options)` and optionally `upsert(records, options)`. It must
+declare matching `embeddingModel` and vector `dimensions`; documents are sent
+to its `upsert` only when `indexDocuments: true`. Vector-store adapters are
+provided by the application, not bundled with the SDK.
+
+`sameeMuuqaal()` returns the adapter's real job ID and status. `hubiMuuqaal()`,
+`helMuuqaal()`, and `joojiMuuqaal()` delegate status, retrieval, and cancellation
+to optional adapter methods; output retrieval is rejected until the adapter
+reports completion.
+
 ## Language detection
 
 `ogaawLuqad()` is a local heuristic and does not make an AI request:
@@ -145,6 +237,8 @@ const language = ai.ogaawLuqad({
 
 The confidence value is an uncalibrated heuristic score, not a probability.
 Very short or unrecognized text returns `language: "unknown"`.
+`caadiyeQoraal()` performs local Unicode NFC and whitespace normalization; it
+does not rewrite Somali vocabulary or infer dialect.
 
 ## Streaming
 
@@ -194,12 +288,12 @@ SDK does not make pricing assumptions.
 
 ## Feature compatibility
 
-| Feature | OpenAI | Gemini | Anthropic | Mistral | DeepSeek | Cohere | xAI |
+| Bundled adapter operation | OpenAI | Gemini | Anthropic | Mistral | DeepSeek | Cohere | xAI |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Text generation / RAG answer | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| Streaming | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Text generation / conversation | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Streaming interface | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Provider-reported token usage | When returned | When returned | When returned | When returned | When returned | When returned | When returned |
-| Local language detection / retrieval | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Local heuristic language detection / lexical retrieval | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 
 Model-specific availability and provider account limits still apply. The
 SDK does not retry failed requests or automatically switch providers.

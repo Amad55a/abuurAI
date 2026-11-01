@@ -10,6 +10,7 @@ import { createCohereProvider } from "../providers/cohere-provider.js";
 import { createXAIProvider } from "../providers/xai-provider.js";
 import { createTextOperations, createConversation } from "../somali/operations.js";
 import { ogaawLuqad as detectLanguage } from "../somali/language-detection.js";
+import { caadiyeQoraal as normalizeText } from "../somali/normalize.js";
 import {
   chunkDocuments,
   retrieveRelevantChunks
@@ -291,7 +292,8 @@ export function createSomaliAI(options = {}) {
         continue;
       }
       tracked[method] = async (...args) => {
-        const tracking = usageTracker.start(providerName, model);
+        const requestModel = args[0]?.model || model;
+        const tracking = usageTracker.start(providerName, requestModel);
         try {
           const response = await provider[method](...args);
           usageTracker.finish(tracking, response);
@@ -454,9 +456,14 @@ export function createSomaliAI(options = {}) {
     return detectLanguage(text);
   }
 
+  function caadiyeQoraal(input) {
+    const text = typeof input === "string" ? input : input?.text;
+    return normalizeText(text);
+  }
+
   function getConfiguredProviderNames() {
     return [...new Set([
-      ...modelSelector.getCandidates(),
+      ...modelSelector.getCandidates().filter((name) => providerFactories[name]),
       ...Object.keys(config.providers || {}).filter((name) => providerFactories[name]),
       ...providerManager.list()
     ])];
@@ -514,7 +521,9 @@ export function createSomaliAI(options = {}) {
         ),
         capabilitySource: providerOptions.capabilities
           ? "adapter-and-developer-configuration"
-          : "adapter-interface",
+          : Array.isArray(adapter?.capabilities)
+            ? "adapter-declaration"
+            : "baseline-adapter-interface",
         modelCapabilityVerification:
           "Adapter support is reported; actual model capability and account access must be verified with the provider."
       };
@@ -550,13 +559,24 @@ export function createSomaliAI(options = {}) {
     return getTrackedProvider(providerName)[method]({
       ...input,
       provider: providerName,
-      model: provider.model || getProviderOptions(providerName, config).model,
+      model: input.embeddingModel || input.model ||
+        provider.model || getProviderOptions(providerName, config).model,
       language: input.language || config.language,
       systemPrompt: config.systemPrompt
     });
   }
 
-  function validateMediaPayload(value, name) {
+  function operationMetadata(input, task, result = {}) {
+    const providerName = resolveProviderName(input.provider, task);
+    const provider = getProvider(providerName);
+    return {
+      provider: result.provider || providerName,
+      model: result.model || provider.model ||
+        getProviderOptions(providerName, config).model || null
+    };
+  }
+
+  function validateMediaPayload(value, name, mimeType) {
     if (
       typeof value !== "string" &&
       !(value instanceof ArrayBuffer) &&
@@ -564,6 +584,32 @@ export function createSomaliAI(options = {}) {
       !(typeof Blob !== "undefined" && value instanceof Blob)
     ) {
       throw new Error(`${name} must be a string, Blob, ArrayBuffer, or typed array.`);
+    }
+    const dataUriMimeType = typeof value === "string"
+      ? value.match(/^data:([^;,]+)[;,]/i)?.[1]
+      : undefined;
+    const resolvedMimeType = mimeType ||
+      (typeof Blob !== "undefined" && value instanceof Blob ? value.type : null) ||
+      dataUriMimeType ||
+      (name === "document" && typeof value === "string" ? "text/plain" : null);
+    if (!resolvedMimeType ||
+      !/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(resolvedMimeType)) {
+      throw new Error(`${name} requires a valid MIME type.`);
+    }
+    if (name === "audio" && !resolvedMimeType.toLowerCase().startsWith("audio/")) {
+      throw new Error("audio must use an audio MIME type.");
+    }
+    if (name === "image" && !resolvedMimeType.toLowerCase().startsWith("image/")) {
+      throw new Error("image must use an image MIME type.");
+    }
+    if (name === "document" &&
+      !resolvedMimeType.toLowerCase().startsWith("text/") &&
+      ![
+        "application/pdf",
+        "application/rtf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ].includes(resolvedMimeType.toLowerCase())) {
+      throw new Error(`Unsupported document MIME type "${resolvedMimeType}".`);
     }
     const byteLength = typeof value === "string"
       ? new TextEncoder().encode(value).byteLength
@@ -590,7 +636,10 @@ export function createSomaliAI(options = {}) {
 
     const providerName = input.provider || config.provider || "gemini";
     if (providerManager.list().includes(providerName) &&
-      typeof providerManager.get(providerName).detectDialect === "function") {
+      getAdapterCapabilities(
+        providerManager.get(providerName),
+        config.providers?.[providerName]?.capabilities
+      ).includes("dialect-detection")) {
       return providerManager.get(providerName).detectDialect({
         text: input.text,
         language: input.language || config.language
@@ -612,8 +661,15 @@ export function createSomaliAI(options = {}) {
     if (input.audio === undefined || input.audio === null) {
       throw new Error("Please provide audio to transcribe.");
     }
-    validateMediaPayload(input.audio, "audio");
-    return invokeCapability("speech-recognition", input, "conversation");
+    validateMediaPayload(input.audio, "audio", input.mimeType);
+    const result = await invokeCapability("speech-recognition", input, "conversation");
+    if (typeof result?.text !== "string" || !result.text.trim()) {
+      throw new Error("Speech adapter returned no transcription text.");
+    }
+    return {
+      ...result,
+      ...operationMetadata(input, "conversation", result)
+    };
   }
 
   async function qoraalUhadal(input = {}) {
@@ -623,7 +679,18 @@ export function createSomaliAI(options = {}) {
     if (typeof input.text !== "string" || !input.text.trim()) {
       throw new Error("Please provide non-empty text for speech synthesis.");
     }
-    return invokeCapability("text-to-speech", input, "conversation");
+    const result = await invokeCapability("text-to-speech", input, "conversation");
+    const audio = result?.audio ?? result?.data ?? result;
+    if (audio === undefined || audio === null || audio === "") {
+      throw new Error("Speech synthesis adapter returned no audio output.");
+    }
+    return {
+      ...(result && typeof result === "object" && !ArrayBuffer.isView(result)
+        ? result
+        : {}),
+      audio,
+      ...operationMetadata(input, "conversation", result)
+    };
   }
 
   async function falanqeeSawir(input = {}) {
@@ -633,11 +700,18 @@ export function createSomaliAI(options = {}) {
     if (input.image === undefined || input.image === null) {
       throw new Error("Please provide an image to analyze.");
     }
-    validateMediaPayload(input.image, "image");
+    validateMediaPayload(input.image, "image", input.mimeType);
     if (typeof input.prompt !== "string" || !input.prompt.trim()) {
       throw new Error("Please provide a non-empty image analysis prompt.");
     }
-    return invokeCapability("image-understanding", input, "reasoning");
+    const result = await invokeCapability("image-understanding", input, "reasoning");
+    if (typeof result?.text !== "string" || !result.text.trim()) {
+      throw new Error("Image analysis adapter returned no text result.");
+    }
+    return {
+      ...result,
+      ...operationMetadata(input, "reasoning", result)
+    };
   }
 
   async function falanqeeDukumenti(input = {}) {
@@ -647,11 +721,18 @@ export function createSomaliAI(options = {}) {
     if (input.document === undefined || input.document === null) {
       throw new Error("Please provide a document to analyze.");
     }
-    validateMediaPayload(input.document, "document");
+    validateMediaPayload(input.document, "document", input.mimeType);
     if (typeof input.prompt !== "string" || !input.prompt.trim()) {
       throw new Error("Please provide a non-empty document analysis prompt.");
     }
-    return invokeCapability("document-understanding", input, "reasoning");
+    const result = await invokeCapability("document-understanding", input, "reasoning");
+    if (typeof result?.text !== "string" || !result.text.trim()) {
+      throw new Error("Document analysis adapter returned no text result.");
+    }
+    return {
+      ...result,
+      ...operationMetadata(input, "reasoning", result)
+    };
   }
 
   async function sameeSawir(input = {}) {
@@ -661,7 +742,24 @@ export function createSomaliAI(options = {}) {
     if (typeof input.prompt !== "string" || !input.prompt.trim()) {
       throw new Error("Please provide a non-empty image generation prompt.");
     }
-    return invokeCapability("image-generation", input, "writing");
+    const result = await invokeCapability("image-generation", input, "writing");
+    let images = result?.images;
+    if (!Array.isArray(images)) {
+      const singleImage = result?.image ?? result?.url ?? result?.data;
+      images = singleImage === undefined ? [] : [singleImage];
+    }
+    if (images.length === 0 || images.some((image) =>
+      typeof image !== "string" &&
+      (!image || typeof image !== "object" ||
+        (image.url === undefined && image.data === undefined))
+    )) {
+      throw new Error("Image generation adapter returned no usable image output.");
+    }
+    return {
+      ...result,
+      images,
+      ...operationMetadata(input, "writing", result)
+    };
   }
 
   async function sameeMuuqaal(input = {}) {
@@ -678,7 +776,59 @@ export function createSomaliAI(options = {}) {
         'Video adapters must return a job with an id and a supported status.'
       );
     }
-    return job;
+    return {
+      ...job,
+      ...operationMetadata(input, "writing", job)
+    };
+  }
+
+  async function hubiMuuqaal(input = {}) {
+    if (!input || typeof input !== "object" || Array.isArray(input) ||
+      typeof input.id !== "string" || !input.id.trim()) {
+      throw new Error("hubiMuuqaal expects a non-empty job id and options object.");
+    }
+    const job = await invokeCapability("video-job-status", input, "reasoning");
+    if (!job || job.id !== input.id ||
+      !["queued", "processing", "completed", "failed", "cancelled"].includes(job.status)) {
+      throw new Error("Video status adapters must return the requested job id and a supported status.");
+    }
+    return {
+      ...job,
+      ...operationMetadata(input, "reasoning", job)
+    };
+  }
+
+  async function helMuuqaal(input = {}) {
+    if (!input || typeof input !== "object" || Array.isArray(input) ||
+      typeof input.id !== "string" || !input.id.trim()) {
+      throw new Error("helMuuqaal expects a non-empty completed video job id.");
+    }
+    const result = await invokeCapability("video-retrieval", input, "reasoning");
+    if (result?.status && result.status !== "completed") {
+      throw new Error("Video output is not available until the job is completed.");
+    }
+    if (result?.video === undefined && result?.url === undefined &&
+      result?.data === undefined && !(result instanceof ArrayBuffer) &&
+      !ArrayBuffer.isView(result) &&
+      !(typeof Blob !== "undefined" && result instanceof Blob)) {
+      throw new Error("Video retrieval adapter returned no video output.");
+    }
+    return {
+      ...(result && typeof result === "object" &&
+        !(result instanceof ArrayBuffer) && !ArrayBuffer.isView(result) &&
+        !(typeof Blob !== "undefined" && result instanceof Blob)
+        ? result
+        : { video: result }),
+      ...operationMetadata(input, "reasoning", result)
+    };
+  }
+
+  async function joojiMuuqaal(input = {}) {
+    if (!input || typeof input !== "object" || Array.isArray(input) ||
+      typeof input.id !== "string" || !input.id.trim()) {
+      throw new Error("joojiMuuqaal expects a non-empty video job id.");
+    }
+    return invokeCapability("video-cancellation", input, "reasoning");
   }
 
   async function sooSaarJSON(input = {}) {
@@ -712,8 +862,7 @@ export function createSomaliAI(options = {}) {
 
     return {
       data,
-      provider: response.provider || input.provider || config.provider || "gemini",
-      model: response.model || config.model,
+      ...operationMetadata(input, "reasoning", response),
       ...(response.usage ? { usage: response.usage } : {})
     };
   }
@@ -747,10 +896,25 @@ export function createSomaliAI(options = {}) {
     }
     return {
       embeddings,
-      provider: response.provider || input.provider || config.provider || "gemini",
-      model: response.model || config.model,
+      ...operationMetadata(input, "reasoning", response),
       ...(response.usage ? { usage: response.usage } : {})
     };
+  }
+
+  function isuEegEmbedding(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) ||
+      left.length === 0 || left.length !== right.length ||
+      left.some((value) => !Number.isFinite(value)) ||
+      right.some((value) => !Number.isFinite(value))) {
+      throw new Error("Embedding vectors must be non-empty numeric arrays with matching dimensions.");
+    }
+    const leftNorm = Math.sqrt(left.reduce((sum, value) => sum + value ** 2, 0));
+    const rightNorm = Math.sqrt(right.reduce((sum, value) => sum + value ** 2, 0));
+    if (leftNorm === 0 || rightNorm === 0) {
+      throw new Error("Embedding vectors must have non-zero magnitudes.");
+    }
+    return left.reduce((sum, value, index) => sum + value * right[index], 0) /
+      (leftNorm * rightNorm);
   }
 
   async function wakiilAI(input = {}) {
@@ -764,12 +928,24 @@ export function createSomaliAI(options = {}) {
     if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 10) {
       throw new Error("maxSteps must be an integer from 1 to 10.");
     }
+    const maxExecutionMs = input.maxExecutionMs ?? 30000;
+    if (!Number.isInteger(maxExecutionMs) ||
+      maxExecutionMs < 1 || maxExecutionMs > 120000) {
+      throw new Error("maxExecutionMs must be an integer from 1 to 120000.");
+    }
     if (input.tools !== undefined && !Array.isArray(input.tools)) {
       throw new Error("tools must be an array of explicitly supplied tool definitions.");
     }
     if (input.signal !== undefined &&
-      (!input.signal || typeof input.signal.aborted !== "boolean")) {
+      (!input.signal || typeof input.signal.aborted !== "boolean" ||
+        typeof input.signal.addEventListener !== "function")) {
       throw new Error("signal must be an AbortSignal.");
+    }
+    if (input.approve !== undefined && typeof input.approve !== "function") {
+      throw new Error("approve must be a function when provided.");
+    }
+    if (input.memory !== undefined && !Array.isArray(input.memory)) {
+      throw new Error("memory must be an array of prior JSON-compatible agent steps.");
     }
     const tools = input.tools || [];
     const names = new Set();
@@ -778,6 +954,8 @@ export function createSomaliAI(options = {}) {
         typeof tool.name !== "string" || !/^[a-zA-Z][\w-]{0,63}$/.test(tool.name) ||
         typeof tool.execute !== "function" ||
         !tool.schema || typeof tool.schema !== "object" ||
+        (tool.requiresApproval !== undefined &&
+          typeof tool.requiresApproval !== "boolean") ||
         names.has(tool.name)) {
         throw new Error("Each tool needs a unique name, JSON schema, and execute function.");
       }
@@ -790,67 +968,167 @@ export function createSomaliAI(options = {}) {
         `Provider "${providerName}" does not implement the "tool-calling" capability.`
       );
     }
-    const history = [];
+    let history = [];
+    if (input.memory !== undefined) {
+      let serializedMemory;
+      try {
+        serializedMemory = JSON.stringify(input.memory);
+      } catch {
+        throw new Error("memory must contain only JSON-compatible values.");
+      }
+      if (serializedMemory.length > 1024 * 1024) {
+        throw new Error("memory must be smaller than 1 MB.");
+      }
+      history = JSON.parse(serializedMemory);
+    }
     const executionHistory = [];
-    for (let step = 0; step < maxSteps; step += 1) {
-      if (input.signal?.aborted) {
-        const error = new Error("Agent execution was cancelled.");
-        error.name = "AbortError";
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (input.signal?.aborted) {
+      onAbort();
+    } else {
+      input.signal?.addEventListener("abort", onAbort, { once: true });
+    }
+    const deadline = Date.now() + maxExecutionMs;
+    const timeout = setTimeout(() => controller.abort(), maxExecutionMs);
+    async function withinDeadline(operation) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0 || controller.signal.aborted) {
+        const timedOut = Date.now() >= deadline;
+        const error = new Error(
+          timedOut
+            ? "Agent execution exceeded maxExecutionMs."
+            : "Agent execution was cancelled."
+        );
+        error.name = timedOut ? "TimeoutError" : "AbortError";
         throw error;
       }
-      const result = await getTrackedProvider(providerName).generateWithTools({
-        task: input.task,
-        tools: tools.map(({ name, description, schema }) => ({ name, description, schema })),
-        history,
-        step: step + 1,
-        language: input.language || config.language,
-        systemPrompt: config.systemPrompt,
-        signal: input.signal
-      });
-      if (typeof result?.finalAnswer === "string") {
-        return {
-          answer: result.finalAnswer,
-          steps: step + 1,
-          executionHistory,
-          provider: result.provider || providerName,
-          model: result.model || provider.model || config.model
-        };
+      let timeoutHandle;
+      let abortListener;
+      try {
+        return await Promise.race([
+          operation,
+          new Promise((_, reject) => {
+            abortListener = () => {
+              const error = new Error("Agent execution was cancelled.");
+              error.name = "AbortError";
+              reject(error);
+            };
+            controller.signal.addEventListener("abort", abortListener, { once: true });
+          }),
+          new Promise((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+              controller.abort();
+              const error = new Error("Agent execution exceeded maxExecutionMs.");
+              error.name = "TimeoutError";
+              reject(error);
+            }, remaining);
+          })
+        ]);
+      } finally {
+        clearTimeout(timeoutHandle);
+        if (abortListener) {
+          controller.signal.removeEventListener("abort", abortListener);
+        }
       }
-      const call = result?.toolCall;
-      const tool = tools.find((candidate) => candidate.name === call?.name);
-      if (!tool) {
-        throw new Error("Agent requested a tool that was not explicitly provided.");
-      }
-      const validationErrors = validateJsonSchema(call.arguments, tool.schema);
-      if (validationErrors.length) {
-        throw new Error(`Agent tool arguments are invalid: ${validationErrors.join(" ")}`);
-      }
-      if (tool.requiresApproval) {
-        if (typeof input.approve !== "function") {
+    }
+
+    try {
+      for (let step = 0; step < maxSteps; step += 1) {
+        if (controller.signal.aborted) {
+          const error = new Error("Agent execution was cancelled.");
+          error.name = "AbortError";
+          throw error;
+        }
+        const result = await withinDeadline(
+          getTrackedProvider(providerName).generateWithTools({
+            task: input.task,
+            tools: tools.map(({ name, description, schema }) => ({
+              name,
+              description,
+              schema
+            })),
+            history,
+            step: step + 1,
+            language: input.language || config.language,
+            systemPrompt: config.systemPrompt,
+            signal: controller.signal
+          })
+        );
+        if (typeof result?.finalAnswer === "string") {
           return {
-            status: "approval_required",
-            pendingTool: { name: tool.name, arguments: call.arguments },
+            answer: result.finalAnswer,
             steps: step + 1,
-            executionHistory
+            executionHistory,
+            ...(input.memory !== undefined ? { memory: history } : {}),
+            provider: result.provider || providerName,
+            model: result.model || provider.model || config.model
           };
         }
-        if (!await input.approve({ name: tool.name, arguments: call.arguments })) {
-          executionHistory.push({ tool: tool.name, status: "denied" });
-          history.push({ tool: tool.name, status: "denied" });
-          continue;
+        const call = result?.toolCall;
+        const tool = tools.find((candidate) => candidate.name === call?.name);
+        if (!tool) {
+          throw new Error("Agent requested a tool that was not explicitly provided.");
         }
+        const validationErrors = validateJsonSchema(call.arguments, tool.schema);
+        if (validationErrors.length) {
+          throw new Error(`Agent tool arguments are invalid: ${validationErrors.join(" ")}`);
+        }
+        if (tool.requiresApproval) {
+          if (typeof input.approve !== "function") {
+            return {
+              status: "approval_required",
+              pendingTool: { name: tool.name, arguments: call.arguments },
+              steps: step + 1,
+              executionHistory,
+              ...(input.memory !== undefined ? { memory: history } : {})
+            };
+          }
+          const approved = await withinDeadline(
+            input.approve({
+              name: tool.name,
+              arguments: call.arguments,
+              signal: controller.signal
+            })
+          );
+          if (!approved) {
+            executionHistory.push({ tool: tool.name, status: "denied" });
+            history.push({ tool: tool.name, status: "denied" });
+            continue;
+          }
+        }
+        const toolResult = await withinDeadline(
+          tool.execute(call.arguments, { signal: controller.signal })
+        );
+        let safeResult;
+        try {
+          safeResult = JSON.stringify(toolResult);
+        } catch {
+          throw new Error(`Tool "${tool.name}" returned a non-serializable result.`);
+        }
+        if (safeResult === undefined || safeResult.length > 1024 * 1024) {
+          throw new Error(`Tool "${tool.name}" result must be JSON serializable and under 1 MB.`);
+        }
+        const serializedResult = JSON.parse(safeResult);
+        executionHistory.push({ tool: tool.name, status: "completed" });
+        history.push({
+          tool: tool.name,
+          arguments: call.arguments,
+          result: serializedResult
+        });
       }
-      const toolResult = await tool.execute(call.arguments, { signal: input.signal });
-      executionHistory.push({ tool: tool.name, status: "completed" });
-      history.push({ tool: tool.name, arguments: call.arguments, result: toolResult });
+      return {
+        status: "max_steps_reached",
+        steps: maxSteps,
+        executionHistory,
+        ...(input.memory !== undefined ? { memory: history } : {}),
+        provider: providerName,
+        model: provider.model || config.model
+      };
+    } finally {
+      clearTimeout(timeout);
+      input.signal?.removeEventListener("abort", onAbort);
     }
-    return {
-      status: "max_steps_reached",
-      steps: maxSteps,
-      executionHistory,
-      provider: providerName,
-      model: provider.model || config.model
-    };
   }
 
   async function raadsoAqoon(input = {}) {
@@ -861,13 +1139,145 @@ export function createSomaliAI(options = {}) {
       throw new Error("Please provide a non-empty question.");
     }
 
+    if (input.strategy !== undefined &&
+      !["lexical", "semantic"].includes(input.strategy)) {
+      throw new Error('strategy must be "lexical" or "semantic".');
+    }
+    if (input.vectorStore !== undefined &&
+      (input.strategy !== "semantic" ||
+        !input.vectorStore ||
+        typeof input.vectorStore !== "object" ||
+        typeof input.vectorStore.search !== "function")) {
+      throw new Error(
+        "vectorStore requires semantic strategy and a search(vector, options) function."
+      );
+    }
+    if (input.indexDocuments !== undefined &&
+      typeof input.indexDocuments !== "boolean") {
+      throw new Error("indexDocuments must be a boolean.");
+    }
+
     const chunks = chunkDocuments(input.documents, {
       chunkSize: input.chunkSize,
       overlap: input.overlap
     });
-    const retrieved = retrieveRelevantChunks(input.question, chunks, {
-      limit: input.limit
-    });
+    let retrieved;
+    let providerName;
+    let provider;
+    if (input.strategy === "semantic") {
+      providerName = resolveProviderName(input.provider, "reasoning");
+      provider = getTrackedProvider(providerName);
+      if (typeof input.embeddingModel !== "string" || !input.embeddingModel.trim()) {
+        throw new Error(
+          "Semantic retrieval requires an explicit embeddingModel identifier."
+        );
+      }
+      const rawProvider = getProvider(providerName);
+      const configuredCapabilities = config.providers?.[providerName]?.capabilities;
+      if (!getAdapterCapabilities(rawProvider, configuredCapabilities).includes("embeddings")) {
+        throw new Error(
+          `Provider "${providerName}" does not implement the "embeddings" capability.`
+        );
+      }
+      const vectorsResult = await provider.createEmbedding({
+        texts: [input.question, ...chunks.map((chunk) => chunk.text)],
+        model: input.embeddingModel
+      });
+      const vectors = vectorsResult?.embeddings;
+      if (!Array.isArray(vectors) || vectors.length !== chunks.length + 1 ||
+        vectors.some((vector) => !Array.isArray(vector) || vector.length === 0 ||
+          vector.some((value) => !Number.isFinite(value)))) {
+        throw new Error("Embedding adapter returned invalid vectors for semantic retrieval.");
+      }
+      const dimensions = vectors[0].length;
+      if (vectors.some((vector) => vector.length !== dimensions)) {
+        throw new Error("Embedding vectors have incompatible dimensions.");
+      }
+      const cosineSimilarity = (left, right) => {
+        const dot = left.reduce((sum, value, index) => sum + value * right[index], 0);
+        const leftNorm = Math.sqrt(left.reduce((sum, value) => sum + value ** 2, 0));
+        const rightNorm = Math.sqrt(right.reduce((sum, value) => sum + value ** 2, 0));
+        if (leftNorm === 0 || rightNorm === 0) {
+          throw new Error("Embedding vectors must have non-zero magnitudes.");
+        }
+        return dot / (leftNorm * rightNorm);
+      };
+      const minScore = input.minScore ?? 0;
+      if (!Number.isFinite(minScore) || minScore < -1 || minScore > 1) {
+        throw new Error("minScore must be a number from -1 to 1.");
+      }
+      const limit = input.limit ?? 4;
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new Error("Retrieval limit must be a positive integer.");
+      }
+      if (input.vectorStore) {
+        const store = input.vectorStore;
+        if (store.dimensions !== dimensions ||
+          store.embeddingModel !== input.embeddingModel) {
+          throw new Error(
+            "Vector store embedding model and dimensions must match the configured embedding model."
+          );
+        }
+        if (input.indexDocuments === true) {
+          if (typeof store.upsert !== "function") {
+            throw new Error("indexDocuments requires vectorStore.upsert(records, options).");
+          }
+          await store.upsert(
+            chunks.map((chunk, index) => ({
+              id: `${chunk.documentId}:${chunk.chunkIndex}`,
+              vector: vectors[index + 1],
+              text: chunk.text,
+              metadata: {
+                documentId: chunk.documentId,
+                chunkIndex: chunk.chunkIndex
+              }
+            })),
+            { embeddingModel: input.embeddingModel, dimensions }
+          );
+        }
+        const hits = await store.search(vectors[0], {
+          limit,
+          embeddingModel: input.embeddingModel,
+          dimensions
+        });
+        if (!Array.isArray(hits) || hits.some((hit) =>
+          !hit || typeof hit !== "object" ||
+          typeof hit.id !== "string" ||
+          typeof hit.text !== "string" ||
+          !Number.isFinite(hit.score)
+        )) {
+          throw new Error("Vector store returned malformed search results.");
+        }
+        retrieved = hits
+          .filter((hit) => hit.score >= minScore)
+          .slice(0, limit)
+          .map((hit) => ({
+            documentId: hit.metadata?.documentId || hit.documentId || hit.id,
+            chunkIndex: Number.isInteger(hit.metadata?.chunkIndex)
+              ? hit.metadata.chunkIndex
+              : 0,
+            text: hit.text,
+            score: hit.score
+          }));
+      } else {
+        retrieved = chunks
+        .map((chunk, index) => ({
+          ...chunk,
+          score: cosineSimilarity(vectors[0], vectors[index + 1])
+        }))
+        .filter((chunk) => chunk.score >= minScore)
+        .sort((left, right) =>
+          right.score - left.score ||
+          left.documentId.localeCompare(right.documentId) ||
+          left.chunkIndex - right.chunkIndex
+        )
+        .slice(0, limit);
+      }
+    } else {
+      retrieved = retrieveRelevantChunks(input.question, chunks, {
+        limit: input.limit
+      });
+    }
 
     if (retrieved.length === 0) {
       const language = detectLanguage(input.question).language;
@@ -882,11 +1292,8 @@ export function createSomaliAI(options = {}) {
       };
     }
 
-    const providerName = resolveProviderName(
-      input.provider,
-      "reasoning"
-    );
-    const provider = getTrackedProvider(providerName);
+    providerName ||= resolveProviderName(input.provider, "reasoning");
+    provider ||= getTrackedProvider(providerName);
     const context = retrieved
       .map((chunk) => `[${chunk.documentId}]\n${chunk.text}`)
       .join("\n\n");
@@ -908,10 +1315,7 @@ export function createSomaliAI(options = {}) {
       })),
       hasEnoughInformation: true,
       provider: response.provider || providerName,
-      model: response.model || modelSelector.select({
-        task: "reasoning",
-        preferredProvider: providerName
-      }).model
+      model: response.model || provider.model || config.model || null
     };
   }
 
@@ -965,6 +1369,7 @@ export function createSomaliAI(options = {}) {
     raadsoAqoon,
     ogaawLuqad,
     ogaawLahjad,
+    caadiyeQoraal,
     hadalUqor,
     qoraalUhadal,
     wakiilAI,
@@ -972,8 +1377,12 @@ export function createSomaliAI(options = {}) {
     falanqeeDukumenti,
     sooSaarJSON,
     sameeEmbedding,
+    isuEegEmbedding,
     sameeSawir,
     sameeMuuqaal,
+    hubiMuuqaal,
+    helMuuqaal,
+    joojiMuuqaal,
     qulqul,
     cabirIsticmaalka,
     ...textMethods,

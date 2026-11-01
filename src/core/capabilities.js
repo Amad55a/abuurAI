@@ -13,7 +13,10 @@ export const SUPPORTED_CAPABILITIES = [
   "embeddings",
   "streaming",
   "document-understanding",
-  "dialect-detection"
+  "dialect-detection",
+  "video-job-status",
+  "video-retrieval",
+  "video-cancellation"
 ];
 
 const adapterMethods = {
@@ -31,7 +34,10 @@ const adapterMethods = {
   "text-to-speech": "synthesizeSpeech",
   embeddings: "createEmbedding",
   streaming: "stream",
-  "dialect-detection": "detectDialect"
+  "dialect-detection": "detectDialect",
+  "video-job-status": "getVideoJob",
+  "video-retrieval": "getVideoResult",
+  "video-cancellation": "cancelVideoJob"
 };
 
 export function getAdapterCapabilities(provider, configuredCapabilities) {
@@ -39,10 +45,18 @@ export function getAdapterCapabilities(provider, configuredCapabilities) {
     .filter(([, method]) => typeof provider?.[method] === "function")
     .map(([capability]) => capability);
 
-  if (!Array.isArray(configuredCapabilities)) {
-    return declared;
+  const providerCapabilities = Array.isArray(provider?.capabilities)
+    ? provider.capabilities
+    : null;
+  if (Array.isArray(configuredCapabilities) && providerCapabilities) {
+    return declared.filter((capability) =>
+      configuredCapabilities.includes(capability) &&
+      providerCapabilities.includes(capability)
+    );
   }
-  return declared.filter((capability) => configuredCapabilities.includes(capability));
+  const allowed = configuredCapabilities || providerCapabilities ||
+    ["text-generation", "conversation", "streaming"];
+  return declared.filter((capability) => allowed.includes(capability));
 }
 
 export function getCapabilityMethod(capability) {

@@ -29,6 +29,43 @@ export function validateJsonSchema(value, schema, path = "$") {
   if (unsupported) {
     throw new Error(`Unsupported JSON Schema keyword "${unsupported}".`);
   }
+  if (schema.type !== undefined && !supportedTypes.has(schema.type)) {
+    throw new Error(`Unsupported JSON Schema type "${schema.type}".`);
+  }
+  if (schema.properties !== undefined &&
+    (!schema.properties || typeof schema.properties !== "object" ||
+      Array.isArray(schema.properties))) {
+    throw new Error("schema.properties must be an object.");
+  }
+  if (schema.required !== undefined &&
+    (!Array.isArray(schema.required) ||
+      schema.required.some((name) => typeof name !== "string"))) {
+    throw new Error("schema.required must be an array of property names.");
+  }
+  if (schema.items !== undefined &&
+    (!schema.items || typeof schema.items !== "object" ||
+      Array.isArray(schema.items))) {
+    throw new Error("schema.items must be a JSON Schema object.");
+  }
+  if (schema.enum !== undefined &&
+    (!Array.isArray(schema.enum) || schema.enum.length === 0)) {
+    throw new Error("schema.enum must be a non-empty array.");
+  }
+  if (schema.additionalProperties !== undefined &&
+    typeof schema.additionalProperties !== "boolean") {
+    throw new Error("schema.additionalProperties must be a boolean.");
+  }
+  for (const bound of ["minimum", "maximum"]) {
+    if (schema[bound] !== undefined && !Number.isFinite(schema[bound])) {
+      throw new Error(`schema.${bound} must be a finite number.`);
+    }
+  }
+  for (const bound of ["minLength", "maxLength"]) {
+    if (schema[bound] !== undefined &&
+      (!Number.isInteger(schema[bound]) || schema[bound] < 0)) {
+      throw new Error(`schema.${bound} must be a non-negative integer.`);
+    }
+  }
 
   const errors = [];
   const actualType = value === null
