@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 const supportedTypes = new Set([
   "object",
   "array",
@@ -8,23 +10,28 @@ const supportedTypes = new Set([
   "null"
 ]);
 
-export function validateJsonSchema(value, schema, path = "$") {
+const allowedKeywords = new Set([
+  "type",
+  "properties",
+  "required",
+  "items",
+  "enum",
+  "minimum",
+  "maximum",
+  "minLength",
+  "maxLength",
+  "additionalProperties"
+]);
+
+function validateSchemaDefinition(schema, ancestors = new WeakSet()) {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
     throw new Error("schema must be a JSON Schema object.");
   }
+  if (ancestors.has(schema)) {
+    throw new Error("Circular JSON Schema definitions are not supported.");
+  }
+  ancestors.add(schema);
 
-  const allowedKeywords = new Set([
-    "type",
-    "properties",
-    "required",
-    "items",
-    "enum",
-    "minimum",
-    "maximum",
-    "minLength",
-    "maxLength",
-    "additionalProperties"
-  ]);
   const unsupported = Object.keys(schema).find((key) => !allowedKeywords.has(key));
   if (unsupported) {
     throw new Error(`Unsupported JSON Schema keyword "${unsupported}".`);
@@ -66,6 +73,17 @@ export function validateJsonSchema(value, schema, path = "$") {
       throw new Error(`schema.${bound} must be a non-negative integer.`);
     }
   }
+  for (const child of Object.values(schema.properties || {})) {
+    validateSchemaDefinition(child, ancestors);
+  }
+  if (schema.items) {
+    validateSchemaDefinition(schema.items, ancestors);
+  }
+  ancestors.delete(schema);
+}
+
+export function validateJsonSchema(value, schema, path = "$") {
+  validateSchemaDefinition(schema);
 
   const errors = [];
   const actualType = value === null
@@ -87,9 +105,9 @@ export function validateJsonSchema(value, schema, path = "$") {
     return errors;
   }
 
-  if (schema.enum && (!Array.isArray(schema.enum) || !schema.enum.some(
-    (candidate) => JSON.stringify(candidate) === JSON.stringify(value)
-  ))) {
+  if (schema.enum && !schema.enum.some((candidate) =>
+    isDeepStrictEqual(candidate, value)
+  )) {
     errors.push(`${path} must match one of the allowed values.`);
   }
 

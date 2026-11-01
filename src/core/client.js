@@ -202,10 +202,6 @@ export function createSomaliAI(options = {}) {
     const createProvider = providerFactories[name];
     if (createProvider) {
       const providerOptions = getProviderOptions(name, config);
-      if (name !== "gemini") {
-        providerOptions.apiKey = providerOptions.apiKey || config.apiKey;
-        providerOptions.model = providerOptions.model || config.model;
-      }
       const provider = createProvider(providerOptions);
 
       providerManager.register(name, provider);
@@ -216,7 +212,11 @@ export function createSomaliAI(options = {}) {
     throw new Error(`Provider "${name}" is not supported.`);
   }
 
-  function resolveProviderName(provider, task) {
+  function resolveProviderName(
+    provider,
+    task,
+    requiredCapabilities = ["text-generation"]
+  ) {
     if (config.mode === "auto") {
       if (provider) {
         const configured = modelSelector.getCandidates();
@@ -225,9 +225,26 @@ export function createSomaliAI(options = {}) {
             `Provider "${provider}" is not configured for automatic mode.`
           );
         }
+        const supported = getAdapterCapabilities(
+          getProvider(provider),
+          config.providers?.[provider]?.capabilities
+        );
+        const missing = requiredCapabilities.filter(
+          (capability) => !supported.includes(capability)
+        );
+        if (missing.length) {
+          throw new Error(
+            `Provider "${provider}" does not implement required capabilities: ${missing.join(", ")}.`
+          );
+        }
         return provider;
       }
-      return modelSelector.select({ task }).provider;
+      return modelSelector.select({
+        task,
+        ...(requiredCapabilities.length === 1
+          ? { capability: requiredCapabilities[0] }
+          : { requiredCapabilities })
+      }).provider;
     }
 
     return provider || config.provider || "gemini";
@@ -463,8 +480,7 @@ export function createSomaliAI(options = {}) {
 
   function getConfiguredProviderNames() {
     return [...new Set([
-      ...modelSelector.getCandidates().filter((name) => providerFactories[name]),
-      ...Object.keys(config.providers || {}).filter((name) => providerFactories[name]),
+      ...modelSelector.getConfiguredProviders(),
       ...providerManager.list()
     ])];
   }
@@ -498,7 +514,7 @@ export function createSomaliAI(options = {}) {
           ? providerManager.get(name).model
           : null) ||
         null;
-      const isConfigured = modelSelector.getCandidates().includes(name) ||
+      const isConfigured = modelSelector.getConfiguredProviders().includes(name) ||
         providerManager.list().includes(name);
       const adapter = providerManager.list().includes(name)
         ? providerManager.get(name)
@@ -545,7 +561,7 @@ export function createSomaliAI(options = {}) {
     if (input === null || typeof input !== "object" || Array.isArray(input)) {
       throw new Error(`${capability} operation expects an options object.`);
     }
-    const providerName = resolveProviderName(input.provider, task);
+    const providerName = resolveProviderName(input.provider, task, [capability]);
     const provider = getProvider(providerName);
     const configuredCapabilities = config.providers?.[providerName]?.capabilities;
     const method = getCapabilityMethod(capability);
@@ -566,8 +582,12 @@ export function createSomaliAI(options = {}) {
     });
   }
 
-  function operationMetadata(input, task, result = {}) {
-    const providerName = resolveProviderName(input.provider, task);
+  function operationMetadata(input, task, result = {}, capability) {
+    const providerName = resolveProviderName(
+      input.provider,
+      task,
+      capability ? [capability] : ["text-generation"]
+    );
     const provider = getProvider(providerName);
     return {
       provider: result.provider || providerName,
@@ -668,7 +688,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       ...result,
-      ...operationMetadata(input, "conversation", result)
+      ...operationMetadata(input, "conversation", result, "speech-recognition")
     };
   }
 
@@ -689,7 +709,7 @@ export function createSomaliAI(options = {}) {
         ? result
         : {}),
       audio,
-      ...operationMetadata(input, "conversation", result)
+      ...operationMetadata(input, "conversation", result, "text-to-speech")
     };
   }
 
@@ -710,7 +730,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       ...result,
-      ...operationMetadata(input, "reasoning", result)
+      ...operationMetadata(input, "reasoning", result, "image-understanding")
     };
   }
 
@@ -731,7 +751,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       ...result,
-      ...operationMetadata(input, "reasoning", result)
+      ...operationMetadata(input, "reasoning", result, "document-understanding")
     };
   }
 
@@ -758,7 +778,7 @@ export function createSomaliAI(options = {}) {
     return {
       ...result,
       images,
-      ...operationMetadata(input, "writing", result)
+      ...operationMetadata(input, "writing", result, "image-generation")
     };
   }
 
@@ -778,7 +798,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       ...job,
-      ...operationMetadata(input, "writing", job)
+      ...operationMetadata(input, "writing", job, "video-generation")
     };
   }
 
@@ -794,7 +814,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       ...job,
-      ...operationMetadata(input, "reasoning", job)
+      ...operationMetadata(input, "reasoning", job, "video-job-status")
     };
   }
 
@@ -819,7 +839,7 @@ export function createSomaliAI(options = {}) {
         !(typeof Blob !== "undefined" && result instanceof Blob)
         ? result
         : { video: result }),
-      ...operationMetadata(input, "reasoning", result)
+      ...operationMetadata(input, "reasoning", result, "video-retrieval")
     };
   }
 
@@ -862,7 +882,7 @@ export function createSomaliAI(options = {}) {
 
     return {
       data,
-      ...operationMetadata(input, "reasoning", response),
+      ...operationMetadata(input, "reasoning", response, "structured-output"),
       ...(response.usage ? { usage: response.usage } : {})
     };
   }
@@ -896,7 +916,7 @@ export function createSomaliAI(options = {}) {
     }
     return {
       embeddings,
-      ...operationMetadata(input, "reasoning", response),
+      ...operationMetadata(input, "reasoning", response, "embeddings"),
       ...(response.usage ? { usage: response.usage } : {})
     };
   }
@@ -961,9 +981,12 @@ export function createSomaliAI(options = {}) {
       }
       names.add(tool.name);
     }
-    const providerName = resolveProviderName(input.provider, "reasoning");
+    const providerName = resolveProviderName(input.provider, "reasoning", ["tool-calling"]);
     const provider = getProvider(providerName);
-    if (typeof provider.generateWithTools !== "function") {
+    if (!getAdapterCapabilities(
+      provider,
+      config.providers?.[providerName]?.capabilities
+    ).includes("tool-calling")) {
       throw new Error(
         `Provider "${providerName}" does not implement the "tool-calling" capability.`
       );
@@ -1006,25 +1029,48 @@ export function createSomaliAI(options = {}) {
       let timeoutHandle;
       let abortListener;
       try {
-        return await Promise.race([
-          operation,
-          new Promise((_, reject) => {
-            abortListener = () => {
-              const error = new Error("Agent execution was cancelled.");
-              error.name = "AbortError";
-              reject(error);
-            };
-            controller.signal.addEventListener("abort", abortListener, { once: true });
-          }),
-          new Promise((_, reject) => {
-            timeoutHandle = setTimeout(() => {
-              controller.abort();
-              const error = new Error("Agent execution exceeded maxExecutionMs.");
-              error.name = "TimeoutError";
-              reject(error);
-            }, remaining);
-          })
-        ]);
+        let result;
+        try {
+          result = await Promise.race([
+            operation,
+            new Promise((_, reject) => {
+              abortListener = () => {
+                const timedOut = Date.now() >= deadline;
+                const error = new Error(timedOut
+                  ? "Agent execution exceeded maxExecutionMs."
+                  : "Agent execution was cancelled.");
+                error.name = timedOut ? "TimeoutError" : "AbortError";
+                reject(error);
+              };
+              controller.signal.addEventListener("abort", abortListener, { once: true });
+            }),
+            new Promise((_, reject) => {
+              timeoutHandle = setTimeout(() => {
+                controller.abort();
+                const error = new Error("Agent execution exceeded maxExecutionMs.");
+                error.name = "TimeoutError";
+                reject(error);
+              }, remaining);
+            })
+          ]);
+        } catch (error) {
+          if (controller.signal.aborted && Date.now() >= deadline) {
+            const timeoutError = new Error("Agent execution exceeded maxExecutionMs.");
+            timeoutError.name = "TimeoutError";
+            throw timeoutError;
+          }
+          throw error;
+        }
+        if (controller.signal.aborted || Date.now() >= deadline) {
+          const timedOut = Date.now() >= deadline;
+          controller.abort();
+          const error = new Error(timedOut
+            ? "Agent execution exceeded maxExecutionMs."
+            : "Agent execution was cancelled.");
+          error.name = timedOut ? "TimeoutError" : "AbortError";
+          throw error;
+        }
+        return result;
       } finally {
         clearTimeout(timeoutHandle);
         if (abortListener) {
@@ -1165,7 +1211,13 @@ export function createSomaliAI(options = {}) {
     let providerName;
     let provider;
     if (input.strategy === "semantic") {
-      providerName = resolveProviderName(input.provider, "reasoning");
+      providerName = resolveProviderName(
+        input.provider,
+        "reasoning",
+        input.strategy === "semantic"
+          ? ["text-generation", "embeddings"]
+          : ["text-generation"]
+      );
       provider = getTrackedProvider(providerName);
       if (typeof input.embeddingModel !== "string" || !input.embeddingModel.trim()) {
         throw new Error(
@@ -1335,7 +1387,11 @@ export function createSomaliAI(options = {}) {
       throw new Error("signal must be an AbortSignal.");
     }
 
-    const providerName = resolveProviderName(input.provider, "conversation");
+    const providerName = resolveProviderName(
+      input.provider,
+      "conversation",
+      ["streaming"]
+    );
     const provider = getTrackedProvider(providerName);
     if (typeof provider.stream !== "function") {
       throw new Error(`Streaming is not supported by provider "${providerName}".`);

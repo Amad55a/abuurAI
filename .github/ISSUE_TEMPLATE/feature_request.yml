@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a focused improvement for Somali AI Connect.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for sharing an idea. Please focus on one user need and avoid including credentials or private data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Describe your use case, including who would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what you would like the SDK to do.
+    validations:
+      required: true
+  - type: textarea
+    id: somali
+    attributes:
+      label: Somali language or community context
+      description: If relevant, include language variety, context, and uncertainty. Use original examples and do not share another person's private data.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any existing workaround or other approach.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked existing issues and discussions for a similar request.
+          required: true
+        - label: I have not included API keys, secrets, or private personal information.
+          required: true

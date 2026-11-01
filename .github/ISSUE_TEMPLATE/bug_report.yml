@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a reproducible problem in Somali AI Connect.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Do not include API keys, access tokens, private user data, or other secrets.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem clearly and briefly.
+      placeholder: I expected ... but ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      description: For example, 0.1.0.
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "22.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Not applicable
+        - OpenAI
+        - Google Gemini
+        - Anthropic
+        - Mistral
+        - DeepSeek
+        - Cohere
+        - xAI
+        - Custom adapter
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps or minimal reproduction
+      description: Include a small example with fake credentials only. Remove private data.
+      render: javascript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized error
+      description: Remove API keys, tokens, private data, and request headers before posting.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that this report contains no secrets or private information.
+          required: true
+        - label: I searched existing issues for a similar report.
+          required: true

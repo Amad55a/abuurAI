@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSomaliAI } from "../src/index.js";
+import { getProviderOptions } from "../src/core/model-selector.js";
 
 test("capability discovery reports adapter support without credentials", () => {
   const ai = createSomaliAI({ provider: "custom" });
@@ -49,6 +50,17 @@ test("capability configuration restricts adapter features and validates identifi
     () => ai.awoodahaModelka({ provider: "missing" }),
     /not supported/
   );
+});
+
+test("provider options never reuse another provider's explicit API key", () => {
+  const options = getProviderOptions("anthropic", {
+    provider: "gemini",
+    apiKey: "FAKE_GEMINI_SECRET",
+    model: "gemini-model",
+    providers: { anthropic: { model: "claude-model" } }
+  });
+  assert.equal(options.apiKey, undefined);
+  assert.equal(options.model, "claude-model");
 });
 
 test("capability-aware model selection filters models by adapter operation", () => {
@@ -413,5 +425,22 @@ test("agent requires approval for sensitive tools and blocks unregistered calls"
   await assert.rejects(
     () => noAgent.wakiilAI({ task: "No tool support" }),
     /not implement the "tool-calling" capability/
+  );
+});
+
+test("agent enforces its execution deadline and honors cancellation", async () => {
+  const ai = createSomaliAI({ provider: "custom" });
+  ai.providers.register("custom", {
+    capabilities: ["tool-calling"],
+    generateWithTools: async ({ signal }) =>
+      new Promise((resolve) => {
+        signal.addEventListener("abort", () => resolve({ finalAnswer: "Too late" }), {
+          once: true
+        });
+      })
+  });
+  await assert.rejects(
+    () => ai.wakiilAI({ task: "Wait", maxExecutionMs: 10 }),
+    /exceeded maxExecutionMs/
   );
 });

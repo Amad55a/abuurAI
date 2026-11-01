@@ -83,11 +83,18 @@ export function createModelSelector(config, supportsCapability = () => false) {
     return isProviderConfigured(provider, config) ? [provider] : [];
   }
 
+  function getConfiguredProviders() {
+    return SUPPORTED_PROVIDER_IDS.filter((provider) =>
+      isProviderConfigured(provider, config)
+    );
+  }
+
   function select({
     task = "conversation",
     preferredProvider,
     allowedProviders,
     capability,
+    requiredCapabilities = capability ? [capability] : [],
     allowedModels
   } = {}) {
     if (!SUPPORTED_TASKS.includes(task)) {
@@ -110,10 +117,11 @@ export function createModelSelector(config, supportsCapability = () => false) {
     }
 
     let candidates = getCandidates();
-    if (
-      capability !== undefined &&
-      !SUPPORTED_CAPABILITIES.includes(capability)
-    ) {
+    if (!Array.isArray(requiredCapabilities) ||
+      requiredCapabilities.some((required) => !SUPPORTED_CAPABILITIES.includes(required))) {
+      throw new Error("requiredCapabilities must contain supported capability identifiers.");
+    }
+    if (capability !== undefined && !SUPPORTED_CAPABILITIES.includes(capability)) {
       throw new Error("capability must be a supported capability identifier.");
     }
     if (allowedModels !== undefined &&
@@ -122,8 +130,12 @@ export function createModelSelector(config, supportsCapability = () => false) {
       throw new Error("allowedModels must be an array of non-empty model identifiers.");
     }
 
-    if (capability) {
-      candidates = candidates.filter((provider) => supportsCapability(provider, capability));
+    if (requiredCapabilities.length) {
+      candidates = candidates.filter((provider) =>
+        requiredCapabilities.every((required) =>
+          supportsCapability(provider, required)
+        )
+      );
     }
     if (allowedProviders) {
       candidates = candidates.filter((provider) => allowedProviders.includes(provider));
@@ -175,13 +187,14 @@ export function createModelSelector(config, supportsCapability = () => false) {
       task,
       reason: requestedPreference
         ? `Selected the configured preferred provider for ${task}.`
-        : capability
-          ? `Selected the first configured provider whose adapter reports ${capability}; model support should be verified with the provider.`
+        : requiredCapabilities.length
+          ? `Selected the first configured provider whose adapter reports ${requiredCapabilities.join(", ")}; model support should be verified with the provider.`
           : `Selected the first configured provider for ${task}; no unverified capability or price ranking was applied.`,
       candidates: [...candidates],
-      ...(capability ? { capability } : {})
+      ...(capability ? { capability } : {}),
+      ...(requiredCapabilities.length ? { requiredCapabilities: [...requiredCapabilities] } : {})
     };
   }
 
-  return { select, getCandidates };
+  return { select, getCandidates, getConfiguredProviders };
 }

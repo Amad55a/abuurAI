@@ -3,6 +3,10 @@
 A Somali-first JavaScript SDK for OpenAI, Google Gemini, Anthropic Claude,
 Mistral AI, DeepSeek, Cohere, and xAI Grok. Requires Node.js 22 or later.
 
+Somali AI Connect is a Somali-led project welcoming developers in Somalia and
+the Somali diaspora, as well as everyone interested in building useful
+Somali-first developer tools.
+
 ## Install
 
 ```sh
@@ -182,7 +186,22 @@ Optional adapter methods are `transcribeAudio`, `synthesizeSpeech`,
 `getVideoJob`, `getVideoResult`, `cancelVideoJob`, `generateStructured`,
 `createEmbedding`, `generateWithTools`, and `detectDialect`. Capability names
 match the strings returned by `awoodahaModelka()`. A provider configuration's
-`capabilities` array can further restrict the adapter's declared features.
+`capabilities` array can explicitly declare/allow adapter features or restrict
+them, but it never creates a missing adapter method:
+
+```js
+const ai = createSomaliAI({
+  mode: "auto",
+  providers: {
+    gemini: {
+      apiKey: process.env.GEMINI_API_KEY,
+      model: "your-verified-model",
+      capabilities: ["text-generation", "conversation", "streaming"]
+    }
+  }
+});
+```
+
 This is adapter-level support metadata, not automatic model discovery; configure
 only capabilities you have verified for the exact model and account.
 
@@ -297,3 +316,21 @@ SDK does not make pricing assumptions.
 
 Model-specific availability and provider account limits still apply. The
 SDK does not retry failed requests or automatically switch providers.
+
+## Somali developer community
+
+Soo dhawoow — welcome, Somali developers everywhere! You can help improve
+Somali language support, add tests using fake providers, report bugs, clarify
+examples, or contribute code. Beginners are welcome, and you do not need to
+be an expert or a native Somali speaker to participate.
+
+Start with the [contribution guide](CONTRIBUTING.md), review our
+[Code of Conduct](CODE_OF_CONDUCT.md) and [security policy](SECURITY.md), and
+see [contributor recognition](CONTRIBUTORS.md). Please keep API keys and
+personal information out of public issues and pull requests.
+
+- [Report an issue](https://github.com/Amad55a/somali-ai-connect/issues)
+- [Join a discussion](https://github.com/Amad55a/somali-ai-connect/discussions)
+
+Contributors are credited only for verified contributions and by their
+preferred attribution; see [CONTRIBUTORS.md](CONTRIBUTORS.md).
