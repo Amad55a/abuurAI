@@ -1,0 +1,35 @@
+{
+  "name": "somali-ai-connect",
+  "version": "0.1.0",
+  "description": "A Somali-first JavaScript SDK for connecting to multiple AI providers.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "somali",
+    "ai",
+    "javascript",
+    "sdk",
+    "somali-ai"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "openai": "^7.47.0"
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.9"
+  }
+}
