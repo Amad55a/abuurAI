@@ -4,7 +4,7 @@
   "description": "A Somali-first JavaScript AI SDK for Gemini, OpenAI, Anthropic, Mistral, DeepSeek, Cohere, and xAI. Works in Node.js and the browser.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Amad55a/somali-ai-connect.git"
+    "url": "git+https://github.com/Amad55a/somali-ai-connect.git"
   },
   "homepage": "https://github.com/Amad55a/somali-ai-connect#readme",
   "bugs": {
