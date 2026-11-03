@@ -80,7 +80,8 @@ function normalizeConfiguration(options) {
     ["bixiye", ["provider"]],
     ["furahaAPI", ["apiKey"]],
     ["moodel", ["model"]],
-    ["tilmaamo", ["systemPrompt", "instructions"]]
+    ["tilmaamo", ["systemPrompt", "instructions"]],
+    ["cinwaankaAPI", ["endpoint"]]
   ];
 
   for (const [somaliName, englishNames] of aliases) {
@@ -109,7 +110,8 @@ function normalizeConfiguration(options) {
         const providerConfig = { ...providerOptions };
         for (const [somaliName, englishName] of [
           ["furahaAPI", "apiKey"],
-          ["moodel", "model"]
+          ["moodel", "model"],
+          ["cinwaankaAPI", "endpoint"]
         ]) {
           const value = copyAlias(providerOptions, somaliName, [englishName]);
           if (value !== undefined) providerConfig[englishName] = value;
@@ -285,6 +287,13 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
     }
 
     throw new Error(`Provider "${name}" is not supported.`);
+  }
+
+  if (
+    ["openrouter", "ollama", "perplexity", "meta", "nvidia"].includes(config.provider) &&
+    providerFactories?.[config.provider]
+  ) {
+    getProvider(config.provider);
   }
 
   function resolveProviderName(

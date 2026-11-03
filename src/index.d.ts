@@ -5,7 +5,12 @@ export type ProviderId =
   | "mistral"
   | "deepseek"
   | "cohere"
-  | "xai";
+  | "xai"
+  | "openrouter"
+  | "ollama"
+  | "perplexity"
+  | "meta"
+  | "nvidia";
 
 export type ProviderCapability =
   | "text-generation"
@@ -39,10 +44,13 @@ export type ProviderTask =
 export interface ProviderConfig {
   furahaAPI?: string;
   moodel?: string;
+  cinwaankaAPI?: string;
   /** @deprecated Use furahaAPI. */
   apiKey?: string;
   /** @deprecated Use moodel. */
   model?: string;
+  /** @deprecated Use cinwaankaAPI. */
+  endpoint?: string;
   capabilities?: ProviderCapability[];
   fetch?: typeof fetch;
 }
@@ -52,6 +60,7 @@ export interface AbuurAIOptions {
   furahaAPI?: string;
   moodel?: string;
   tilmaamo?: string;
+  cinwaankaAPI?: string;
   /** @deprecated Use bixiye. */
   provider?: ProviderId;
   /** @deprecated Use moodel. */
@@ -62,6 +71,8 @@ export interface AbuurAIOptions {
   instructions?: string;
   /** @deprecated Use tilmaamo. */
   systemPrompt?: string;
+  /** @deprecated Use cinwaankaAPI. */
+  endpoint?: string;
   providers?: Partial<Record<ProviderId, ProviderConfig>>;
   mode?: "manual" | "auto";
   language?: string;

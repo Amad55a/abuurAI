@@ -5,6 +5,11 @@ import { createMistralProvider } from "./mistral-provider.js";
 import { createDeepSeekProvider } from "./deepseek-provider.js";
 import { createCohereProvider } from "./cohere-provider.js";
 import { createXAIProvider } from "./xai-provider.js";
+import { createOpenRouterProvider } from "./openrouter-provider.js";
+import { createOllamaProvider } from "./ollama-provider.js";
+import { createPerplexityProvider } from "./perplexity-provider.js";
+import { createMetaProvider } from "./meta-provider.js";
+import { createNvidiaProvider } from "./nvidia-provider.js";
 
 export const nodeProviderFactories = {
   openai: createOpenAIProvider,
@@ -13,5 +18,10 @@ export const nodeProviderFactories = {
   mistral: createMistralProvider,
   deepseek: createDeepSeekProvider,
   cohere: createCohereProvider,
-  xai: createXAIProvider
+  xai: createXAIProvider,
+  openrouter: createOpenRouterProvider,
+  ollama: createOllamaProvider,
+  perplexity: createPerplexityProvider,
+  meta: createMetaProvider,
+  nvidia: createNvidiaProvider
 };

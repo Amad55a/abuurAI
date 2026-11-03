@@ -7,7 +7,12 @@ export const SUPPORTED_PROVIDER_IDS = [
   "mistral",
   "deepseek",
   "cohere",
-  "xai"
+  "xai",
+  "openrouter",
+  "ollama",
+  "perplexity",
+  "meta",
+  "nvidia"
 ];
 
 export const SUPPORTED_TASKS = [
@@ -28,7 +33,12 @@ const environmentVariables = {
   mistral: "MISTRAL_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
   cohere: "COHERE_API_KEY",
-  xai: "XAI_API_KEY"
+  xai: "XAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  ollama: "OLLAMA_API_KEY",
+  perplexity: "PERPLEXITY_API_KEY",
+  meta: "META_API_KEY",
+  nvidia: "NVIDIA_API_KEY"
 };
 
 function isProviderConfigured(provider, config) {
@@ -39,6 +49,9 @@ function isProviderConfigured(provider, config) {
       ? config.model
       : null) ||
     (provider === "gemini" ? defaultGeminiModel : null);
+  if (provider === "ollama") {
+    return Boolean(model);
+  }
   const apiKey =
     providerOptions.apiKey ||
     (provider === config.provider || (!config.provider && provider === "gemini")
@@ -53,6 +66,10 @@ export function getProviderOptions(provider, config) {
 
   return {
     ...providerOptions,
+    endpoint:
+      providerOptions.endpoint ||
+      (provider === config.provider ? config.endpoint : null) ||
+      undefined,
     apiKey:
       providerOptions.apiKey ||
       (provider === config.provider || (!config.provider && provider === "gemini")

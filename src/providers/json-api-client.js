@@ -6,7 +6,7 @@ export function getProviderConfig(options, provider, environmentVariable) {
     throw new Error(`${provider} provider options must be an object.`);
   }
 
-  const apiKey = options.apiKey ?? process.env[environmentVariable];
+  const apiKey = options.apiKey ?? globalThis.process?.env?.[environmentVariable];
 
   if (apiKey !== undefined && (typeof apiKey !== "string" || !apiKey.trim())) {
     throw new Error(`${provider} API key must be a non-empty string.`);
@@ -316,7 +316,8 @@ export function createChatCompletionStream({
   apiKey,
   model,
   fetchImplementation,
-  endpoint
+  endpoint,
+  headers
 }) {
   return async function* stream({
     prompt,
@@ -344,7 +345,7 @@ export function createChatCompletionStream({
         ],
         stream: true
       },
-      { authorization: `Bearer ${apiKey}` },
+      headers || { authorization: `Bearer ${apiKey}` },
       signal
     )) {
       const text = event?.choices?.[0]?.delta?.content;
