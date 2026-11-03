@@ -35,7 +35,7 @@ form.addEventListener("submit", async (event) => {
     const requestPrompt = renderSomaliPromptTemplate(promptTemplate.value, {
       prompt: userPrompt
     });
-    const result = await ai.weydii(requestPrompt, { bixiye: "openrouter" });
+    const result = await ai.weydii(requestPrompt);
     answerText.textContent = result.text;
   } catch (error) {
     errorText.textContent = error.message;

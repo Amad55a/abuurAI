@@ -4,24 +4,38 @@
 
 # Abuur AI
 
-Abuur AI is a Somali-first JavaScript SDK for asking questions and translating
-text with seven AI providers through one consistent API. It supports Node.js
-and browser builds. Requires Node.js 22 or later for backend use.
+Abuur AI is a simple, Somali-first JavaScript SDK that connects your applications to popular AI services. With Abuur AI, you can easily ask questions and translate text across multiple AI providers using clean, beginner-friendly Somali names.
 
-## Install
+## What Abuur AI does
+
+- **Ask questions:** Send prompts and get text responses using `weydii()`.
+- **Translate text:** Translate content between languages naturally using `turjun()`.
+- **Work with multiple AI models:** Use one consistent method to talk to 7 major AI providers.
+- **Run anywhere:** Works in both Node.js (version 22+) and modern web browsers.
+
+## Who can use it
+
+Abuur AI is designed for:
+- Developers building Somali-language applications, chatbots, or websites.
+- Beginners who want an easy, intuitive way to interact with AI models.
+- Teams looking for a unified JavaScript library to switch between AI providers without rewriting their code.
+
+## Installation
+
+Install Abuur AI using npm:
 
 ```sh
 npm install abuur-ai
 ```
 
-## First request
+## Quick start
 
-The public configuration uses Somali names: `bixiye` (provider),
-`furahaAPI` (API key), `moodel` (model ID), and `tilmaamo` (instructions).
+Here is a quick example of how to import, configure, and use `abuurAI()`:
 
 ```js
 import { abuurAI } from "abuur-ai";
 
+// 1. Configure Abuur AI
 const ai = abuurAI({
   bixiye: "gemini",
   furahaAPI: process.env.GEMINI_API_KEY,
@@ -29,17 +43,24 @@ const ai = abuurAI({
   tilmaamo: "Ku jawaab Af-Soomaali."
 });
 
-const jawaab = await ai.weydii("Salaan!");
-console.log(jawaab.text);
+// 2. Ask a question
+const response = await ai.weydii("Salaan! Sidee tahay?");
+console.log(response.text);
 ```
 
-## API keys and providers
+### Somali configuration terms
 
-Abuur AI does not load `.env` files. Set the key in your application or
-deployment environment, or pass it as `furahaAPI`. Keep production keys on a
-trusted server.
+Abuur AI uses clear Somali terms for its configuration:
+- `bixiye`: The AI provider you want to use (e.g., `"gemini"`, `"openai"`).
+- `furahaAPI`: Your secret API key.
+- `moodel`: The model name (e.g., `"gemini-2.5-flash"`, `"gpt-4o-mini"`).
+- `tilmaamo`: System instructions or guidance for how the model should behave.
 
-| Provider | `bixiye` | Server environment variable |
+## Supported providers
+
+Abuur AI directly supports 7 leading AI providers:
+
+| Provider | `bixiye` value | Server environment variable |
 | --- | --- | --- |
 | Google Gemini | `gemini` | `GEMINI_API_KEY` |
 | OpenAI | `openai` | `OPENAI_API_KEY` |
@@ -49,93 +70,47 @@ trusted server.
 | Cohere | `cohere` | `COHERE_API_KEY` |
 | xAI | `xai` | `XAI_API_KEY` |
 
-For each provider, configure an exact model ID supported by that provider and
-your account. `gemini-2.5-flash` is the current default when no provider or
-model is selected. Other model IDs shown in tests or examples are examples,
-not claims of live availability. The SDK does not discover models or silently
-switch providers.
+If you do not specify a provider or model, Gemini with `gemini-2.5-flash` is used by default.
 
-All seven direct provider adapters have automated tests using mocked
-responses. These tests check request/response handling, not live API access.
-No provider/model combination is claimed as live-verified by this repository.
+## Sending prompts with `weydii()`
 
-## Backend use
-
-Pass keys via the server environment or `furahaAPI`. The environment variable
-names above are provider-defined and stay unchanged:
+The `weydii()` function sends your prompt to the AI and returns an object with a `.text` property:
 
 ```js
-import { abuurAI } from "abuur-ai";
+const response = await ai.weydii("Waa maxay caqliga macmalka ah (AI)?");
+console.log(response.text);
+```
 
-const ai = abuurAI({
+You can also pass specific options for a single request:
+
+```js
+const response = await ai.weydii("Explain photosynthesis in simple terms.", {
   bixiye: "openai",
-  furahaAPI: process.env.OPENAI_API_KEY,
-  moodel: "gpt-4.1-mini",
-  tilmaamo: "Use clear, natural Somali unless asked otherwise."
+  moodel: "gpt-4o-mini",
+  tilmaamo: "Explain in Somali suitable for a high school student."
 });
-
-const answer = await ai.weydii("Waa maxay barashada mashiinka?");
-console.log(answer.text);
+console.log(response.text);
 ```
 
-The model ID is caller-selected. The example model ID is not a live-test
-claim; check the provider's current model documentation and your account.
+## Translating with `turjun()`
 
-## Browser use and key warning
-
-Browser bundlers can use the browser entry directly:
+The `turjun()` function translates text into your chosen target language:
 
 ```js
-import { abuurAI } from "abuur-ai/browser";
-
-const ai = abuurAI({
-  bixiye: "gemini",
-  furahaAPI: import.meta.env.VITE_GEMINI_API_KEY,
-  moodel: "gemini-2.5-flash",
-  tilmaamo: "Ku jawaab Af-Soomaali."
-});
-
-const answer = await ai.weydii("Salaan!");
-```
-
-**A key bundled into frontend code is visible to browser users.** The SDK
-cannot hide or protect a frontend key. Use a restricted, limited-quota key only
-if you accept this exposure; do not put production secrets in browser code.
-For sensitive keys, call a trusted server endpoint that stores the key
-server-side. The SDK's `gateway: "connected"` mode calls a route you provide;
-it does not create, deploy, or authenticate that route for you.
-
-The browser entry currently supports direct Gemini requests. It can also use
-the Cloudflare Gateway transport when configured; the gateway route and its
-authorization are the application's responsibility. Node and browser entry
-points are separate and do not load each other's provider SDKs.
-
-## Ask and translate
-
-`weydii()` returns a provider response with a `.text` property:
-
-```js
-const answer = await ai.weydii("Sidee ayuu roobku u samaysmaa?");
-console.log(answer.text);
-```
-
-`turjun()` takes the source text and requested target language:
-
-```js
-const translation = await ai.turjun("Good morning.", "Af-Soomaali");
+const translation = await ai.turjun("Good morning, how are you today?", "Somali");
 console.log(translation.text);
 ```
 
-The translation operation asks the model to return only the translation.
-Model output may still be inaccurate; review important translations.
+You can also translate from Somali into other languages:
 
-## Select a model and add instructions
+```js
+const translation = await ai.turjun("Subax wanaagsan, maanta sidee tahay?", "English");
+console.log(translation.text);
+```
 
-Use `moodel` to provide an exact model ID. Use `tilmaamo` to set global
-instructions applied to requests. Operation-specific requirements, such as
-translation-only output, still apply.
+## Choosing a provider and model
 
-In automatic mode, configure provider-specific keys and models:
+You can set your default provider and model when initializing `abuurAI()`, or configure multiple providers in automatic mode:
 
 ```js
 const ai = abuurAI({
@@ -145,93 +120,95 @@ const ai = abuurAI({
       furahaAPI: process.env.GEMINI_API_KEY,
       moodel: "gemini-2.5-flash"
     },
-    anthropic: {
-      furahaAPI: process.env.ANTHROPIC_API_KEY,
-      moodel: "your-supported-anthropic-model"
+    openai: {
+      furahaAPI: process.env.OPENAI_API_KEY,
+      moodel: "gpt-4o-mini"
     }
   },
-  tilmaamo: "Ku jawaab si cad."
+  tilmaamo: "Ku jawaab Af-Soomaali cad oo kooban."
 });
-
-const answer = await ai.weydii("Salaan!");
 ```
 
-Automatic selection chooses a configured provider; it does not retry another
-provider after a failure.
-
-## Errors
-
-Requests reject with an `Error` when configuration is invalid, a key is
-missing, a provider rejects the request, or the network fails. Handle failures
-at the application boundary:
+You can choose or inspect which model will be selected before making a call:
 
 ```js
+const chosen = ai.doorModel({ bixiye: "openai" });
+console.log("Selected provider:", chosen.provider);
+console.log("Selected model:", chosen.model);
+```
+
+## Node.js and browser usage
+
+### In Node.js (server-side)
+
+In Node.js, install `abuur-ai` and set your API keys in your environment variables:
+
+```js
+import { abuurAI } from "abuur-ai";
+
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: process.env.GEMINI_API_KEY
+});
+
+const result = await ai.weydii("Sidee u shaqeeyaa kumbuyuutarku?");
+console.log(result.text);
+```
+
+### In the browser (client-side)
+
+For browser applications (like Vite, Webpack, or direct ES module scripts), import from `abuur-ai/browser`:
+
+```js
+import { abuurAI } from "abuur-ai/browser";
+
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: "YOUR_BROWSER_TEST_KEY"
+});
+
+const result = await ai.weydii("Salaan dunida!");
+console.log(result.text);
+```
+
+## Protecting your API keys
+
+> [!WARNING]
+> **API keys bundled into frontend or browser code are publicly visible.**
+> Anyone who visits your website can inspect network traffic or view page source code to copy your API key.
+
+To keep your keys safe:
+- **Never put private production keys in client-side browser code.**
+- **Use server-side code (Node.js) for production apps:** Keep your real API keys on your backend server and let your frontend talk to your own server endpoint.
+- **Do not commit `.env` files or API keys to GitHub.**
+- If you use a key in the browser for testing or demos, use a restricted key with low spend limits, and rotate it regularly.
+
+## Error handling
+
+Always wrap your AI requests in a `try...catch` block so your application can handle network or provider errors gracefully:
+
+```js
+import { abuurAI } from "abuur-ai";
+
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: process.env.GEMINI_API_KEY
+});
+
 try {
-  const answer = await ai.weydii("Salaan!");
-  console.log(answer.text);
+  const result = await ai.weydii("Maxaa cusub maanta?");
+  console.log(result.text);
 } catch (error) {
-  console.error("Abuur AI request failed:", error.message);
+  // Handle the error cleanly
+  console.error("Codsiga wuu fashilmay:", error.message);
 }
 ```
 
-Do not log API keys or sensitive prompts in error reporting.
+Common reasons for errors:
+- **Missing or invalid API key:** Make sure your key is correct and properly loaded into the environment variable.
+- **Quota or credit limit reached:** Check your account status and billing with the provider.
+- **Network failure:** Ensure your machine or server has an active internet connection.
 
-## TypeScript
+## License
 
-The package includes declarations:
-
-```ts
-import { abuurAI, type AbuurAIOptions } from "abuur-ai";
-
-const options: AbuurAIOptions = {
-  bixiye: "gemini",
-  moodel: "gemini-2.5-flash",
-  furahaAPI: process.env.GEMINI_API_KEY,
-  tilmaamo: "Ku jawaab Af-Soomaali."
-};
-
-const ai = abuurAI(options);
-const answer = await ai.weydii("Salaan!");
-```
-
-## Troubleshooting
-
-- **Missing key:** confirm the provider's environment variable is set in the
-  running server process, or pass `furahaAPI`.
-- **Authentication or permission error:** check the key, account access, and
-  provider billing/quota without printing the key.
-- **Model not found:** verify the exact `moodel` ID and that your account may
-  use it.
-- **Browser request blocked:** check the browser's network/CORS policy and
-  provider key restrictions. A same-origin trusted server route avoids
-  exposing production keys.
-- **Unsupported browser provider:** direct browser mode currently implements
-  Gemini only. Use a caller-managed server route for other providers.
-
-## Security
-
-- Keep live API keys out of source control, frontend bundles, URLs, and logs.
-- Use environment variables or your deployment platform's secret manager on
-  the backend.
-- Browser keys are public by design; restrict and rotate them if exposed.
-- The package never loads `.env` automatically.
-
-See [SECURITY.md](./SECURITY.md) for reporting and additional guidance.
-
-## Development and tests
-
-Install the repository dependencies, then run the mocked SDK tests:
-
-```sh
-npm ci
-npm test
-```
-
-The suite includes Node, browser-entry, provider, and Cloudflare Worker
-regressions. Live provider tests are not run by the normal test command and
-require explicit credentials and authorization.
-
-Additional guides: [Af-Soomaali](./README.so.md) ·
-[Advanced configuration](./ADVANCED.md) ·
-[Browser demo](./examples/browser/README.md) ·
-[Cloudflare Worker example](./templates/cloudflare-ai-gateway/README.md)
+MIT © [Ahmed Abdullahi Shir](https://github.com/Amad55a)

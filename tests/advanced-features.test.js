@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 import {
   chunkDocuments,
   retrieveRelevantChunks
@@ -8,7 +8,7 @@ import {
 
 test("default mode uses Gemini and accepts the Somali question object", async () => {
   let request;
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     apiKey: "fake-default-key",
     model: "configured-gemini-model",
     providers: {
@@ -32,7 +32,7 @@ test("default mode uses Gemini and accepts the Somali question object", async ()
 });
 
 test("automatic provider mode selects configured providers predictably", async () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     mode: "auto",
     providers: {
       gemini: { apiKey: "fake-gemini-key", model: "gemini-model" },
@@ -72,7 +72,7 @@ test("automatic provider mode selects configured providers predictably", async (
 });
 
 test("provider preferences prioritize task settings and remain private-copy config", () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     mode: "auto",
     providerPreference: ["gemini"],
     taskProviderPreferences: {
@@ -97,18 +97,18 @@ test("provider preferences prioritize task settings and remain private-copy conf
   assert.equal(ai.doorModel({ task: "coding" }).provider, "anthropic");
 
   assert.throws(
-    () => createSomaliAI({ providerPreference: ["unknown"] }),
+    () => abuurAI({ providerPreference: ["unknown"] }),
     /supported provider identifiers/
   );
   assert.throws(
-    () => createSomaliAI({ taskProviderPreferences: { unknown: ["gemini"] } }),
+    () => abuurAI({ taskProviderPreferences: { unknown: ["gemini"] } }),
     /Unsupported provider preference task/
   );
 });
 
 test("automatic mode does not silently switch providers after a failure", async () => {
   let fallbackRequests = 0;
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     mode: "auto",
     providers: {
       gemini: {
@@ -142,7 +142,7 @@ test("automatic mode does not silently switch providers after a failure", async 
 });
 
 test("automatic mode rejects explicit providers that are not configured", async () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     mode: "auto",
     providers: {
       gemini: { apiKey: "fake-gemini-key", model: "gemini-model" }
@@ -157,25 +157,25 @@ test("automatic mode rejects explicit providers that are not configured", async 
 
 test("doorModel requires a configured provider and validates mode config", () => {
   assert.throws(
-    () => createSomaliAI({ mode: "invalid" }),
+    () => abuurAI({ mode: "invalid" }),
     /mode must be either/
   );
   assert.throws(
-    () => createSomaliAI({ mode: "auto", providers: { unknown: {} } }),
+    () => abuurAI({ mode: "auto", providers: { unknown: {} } }),
     /not supported/
   );
   assert.throws(
-    () => createSomaliAI({ mode: "auto", providers: { gemini: null } }),
+    () => abuurAI({ mode: "auto", providers: { gemini: null } }),
     /must be an object/
   );
   assert.throws(
-    () => createSomaliAI({ mode: "auto" }).doorModel(),
+    () => abuurAI({ mode: "auto" }).doorModel(),
     /No configured AI provider/
   );
 });
 
 test("language detection handles Somali, English, mixed, other, and insufficient text", () => {
-  const ai = createSomaliAI();
+  const ai = abuurAI();
 
   const somali = ai.ogaawLuqad({ text: "Waa maxay maanta?" });
   assert.equal(somali.language, "so");
@@ -223,7 +223,7 @@ test("document retrieval ranks relevant Somali and English passages", () => {
 test("raadsoAqoon returns grounded source references and avoids calls without matches", async () => {
   let requestCount = 0;
   let receivedRequest;
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", {
     model: "fake-model",
     generate: async (request) => {
@@ -265,7 +265,7 @@ test("raadsoAqoon returns grounded source references and avoids calls without ma
 });
 
 test("usage tracking records requests, actual tokens, custom cost, failure, and reset", async () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "fake",
     pricing: {
       fake: {
@@ -308,7 +308,7 @@ test("usage tracking records requests, actual tokens, custom cost, failure, and 
 });
 
 test("usage metrics mark unavailable token counts and costs as unknown", async () => {
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", {
     model: "fake-model",
     generate: async () => ({ text: "Response" })
@@ -322,7 +322,7 @@ test("usage metrics mark unavailable token counts and costs as unknown", async (
 });
 
 test("qulqul normalizes custom provider chunks and rejects unsupported providers", async () => {
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", {
     async *stream({ prompt, language, signal }) {
       assert.equal(prompt, "Explain AI");
@@ -342,7 +342,7 @@ test("qulqul normalizes custom provider chunks and rejects unsupported providers
   }
   assert.deepEqual(chunks, ["Waa ", "caqli."]);
 
-  const unsupported = createSomaliAI({ provider: "no-stream" });
+  const unsupported = abuurAI({ provider: "no-stream" });
   unsupported.providers.register("no-stream", {
     generate: async () => ({ text: "No streaming" })
   });
@@ -355,7 +355,7 @@ test("qulqul normalizes custom provider chunks and rejects unsupported providers
 });
 
 test("qulqul validates prompt and AbortSignal input", async () => {
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", { async *stream() {} });
 
   await assert.rejects(
@@ -373,7 +373,7 @@ test("qulqul validates prompt and AbortSignal input", async () => {
 });
 
 test("stream usage is recorded only after a stream completes", async () => {
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", {
     model: "fake-model",
     async *stream() {

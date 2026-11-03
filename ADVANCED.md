@@ -21,7 +21,7 @@ const ai = abuurAI({
     },
     anthropic: {
       furahaAPI: process.env.ANTHROPIC_API_KEY,
-      moodel: "your-supported-anthropic-model"
+      moodel: "claude-3-5-sonnet-20241022"
     }
   },
   providerPreference: ["gemini", "anthropic"],
@@ -43,54 +43,11 @@ different provider when an inference request fails. Provider IDs and model IDs
 are the values used by the provider APIs; Abuur AI does not rename them,
 discover models, or verify account access.
 
-## Browser and server-side routes
+## Browser and server-side safety
 
 The browser entry directly supports Gemini, and direct browser requests require
 `furahaAPI`. Anyone using the browser bundle can inspect that key. For
-production keys, have the browser call a trusted server endpoint instead.
-
-`gateway: "connected"` makes a Gemini request to a same-origin route (default
-`/api/somali-ai`). You must implement and authorize this route yourself:
-
-```js
-const ai = abuurAI({
-  bixiye: "gemini",
-  moodel: "gemini-2.5-flash",
-  gateway: "connected"
-});
-
-const answer = await ai.weydii("Salaan!");
-```
-
-This mode sends the prompt, selected provider, and model to the route. It does
-not send a provider key, start a server, or authenticate users. Node callers
-can configure `gatewayEndpoint` for a trusted HTTPS endpoint, but the SDK does
-not authenticate that request; the endpoint must independently authorize and
-limit access.
-
-## Cloudflare AI Gateway
-
-The explicit Cloudflare transport sends inference to an endpoint you operate:
-
-```js
-const ai = abuurAI({
-  bixiye: "gemini",
-  moodel: "gemini-2.5-flash",
-  gateway: {
-    type: "cloudflare",
-    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-    gatewayId: process.env.CLOUDFLARE_GATEWAY_ID,
-    endpoint: "http://localhost:8787"
-  }
-});
-```
-
-The included [Worker example](./templates/cloudflare-ai-gateway/README.md)
-provides a local-development route and mock tests. Its deployed configuration
-rejects inference; do not make it publicly accessible without adding and
-reviewing proper authentication and resource limits. A `gateway` option never
-falls back to direct provider credentials. Keep Cloudflare Run tokens and
-provider keys out of browser code.
+production keys, have the browser call your own trusted backend server instead.
 
 ## Conversation and request options
 
@@ -154,9 +111,3 @@ for await (const chunk of ai.qulqul({ prompt: "Salaan!" })) {
 Streaming, token-usage reporting, and model support depend on the exact
 provider/model response. The automated test suite mocks provider responses;
 it does not verify live models, billing, or entitlements.
-
-## Compatibility
-
-`createSomaliAI()` and the English configuration fields `provider`, `apiKey`,
-`model`, and `systemPrompt` remain deprecated compatibility aliases. New code
-should use `abuurAI()` and `bixiye`, `furahaAPI`, `moodel`, and `tilmaamo`.

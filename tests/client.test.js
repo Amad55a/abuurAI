@@ -1,16 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 import { createWeydii } from "../src/somali/weydii.js";
 
 test("SDK initializes with default configuration", () => {
-  const ai = createSomaliAI();
+  const ai = abuurAI();
 
   assert.equal(ai.getConfig().language, "automatic");
 });
 
 test("SDK accepts custom configuration", () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "openai",
     model: "test-model"
   });
@@ -22,7 +22,7 @@ test("SDK accepts custom configuration", () => {
 });
 
 test("SDK does not expose private or unrecognized config values", () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "test",
     apiKey: "FAKE_PRIVATE_TEST_KEY",
     OPENAI_API_KEY: "FAKE_ALTERNATE_TEST_KEY",
@@ -44,22 +44,22 @@ test("SDK does not expose private or unrecognized config values", () => {
 
 test("SDK validates private keys and global prompt configuration", () => {
   assert.throws(
-    () => createSomaliAI({ apiKey: 123 }),
+    () => abuurAI({ apiKey: 123 }),
     /furahaAPI \(API key\) must be a non-empty string/
   );
   assert.throws(
-    () => createSomaliAI({ systemPrompt: 123 }),
+    () => abuurAI({ systemPrompt: 123 }),
     /tilmaamo \(systemPrompt\) must be a non-empty string/
   );
   assert.throws(
-    () => createSomaliAI(null),
+    () => abuurAI(null),
     /Configuration options must be an object/
   );
 });
 
 test("SDK passes global prompts to all request methods", async () => {
   const requests = [];
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "test",
     systemPrompt: "Always respond professionally in Somali."
   });
@@ -83,13 +83,13 @@ test("SDK passes global prompts to all request methods", async () => {
 });
 
 test("SDK starts with no registered providers", () => {
-  const ai = createSomaliAI();
+  const ai = abuurAI();
 
   assert.deepEqual(ai.getProviders(), []);
 });
 
 test("SDK registers and retrieves a provider", () => {
-  const ai = createSomaliAI();
+  const ai = abuurAI();
 
   const testProvider = {
     generate: async () => ({
@@ -154,7 +154,7 @@ test("weydii rejects an empty question", async () => {
 });
 
 test("SDK exposes weydii through the main client", async () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "test"
   });
 

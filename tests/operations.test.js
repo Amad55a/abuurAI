@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 
 const operations = [
   ["turjun", ["Hello", "Somali"], "accurately and naturally into Somali"],
@@ -30,7 +30,7 @@ for (const providerName of ["openai", "gemini"]) {
   for (const [method, args, expectedPrompt] of operations) {
     test(`${method} works through the ${providerName} SDK provider`, async () => {
       let request;
-      const ai = createSomaliAI({ provider: providerName });
+      const ai = abuurAI({ provider: providerName });
       ai.providers.register(providerName, {
         generate: async (receivedRequest) => {
           request = receivedRequest;
@@ -50,7 +50,7 @@ for (const providerName of ["openai", "gemini"]) {
 
 test("text methods accept language options and preserve provider responses", async () => {
   let request;
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   const expected = { text: "Waa la soo koobay", extra: true };
   ai.providers.register("fake", {
     generate: async (receivedRequest) => {
@@ -67,7 +67,7 @@ for (const providerName of ["openai", "gemini"]) {
   test(`turjun requests natural Somali-only translations from ${providerName}`, async () => {
     let request;
     const expected = { text: "Salaan, sidee tahay?", provider: providerName };
-    const ai = createSomaliAI({ provider: providerName });
+    const ai = abuurAI({ provider: providerName });
     ai.providers.register(providerName, {
       generate: async (receivedRequest) => {
         request = receivedRequest;
@@ -90,7 +90,7 @@ for (const providerName of ["openai", "gemini"]) {
 }
 
 test("text methods reject invalid input", async () => {
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", { generate: async () => ({ text: "unused" }) });
 
   await assert.rejects(() => ai.sooKoob(""), /valid text/);
@@ -101,7 +101,7 @@ test("text methods reject invalid input", async () => {
 
 test("conversation methods retain context and nadiifi clears it", async () => {
   const prompts = [];
-  const ai = createSomaliAI({ provider: "fake" });
+  const ai = abuurAI({ provider: "fake" });
   ai.providers.register("fake", {
     generate: async ({ prompt }) => {
       prompts.push(prompt);

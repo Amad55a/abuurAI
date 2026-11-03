@@ -1,11 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { abuurAI, createSomaliAI } from "../src/index.js";
+import * as nodeIndex from "../src/index.js";
+import { abuurAI } from "../src/index.js";
+import * as browserIndex from "../src/browser.js";
 import { abuurAI as browserAbuurAI } from "../src/browser.js";
 
-test("abuurAI is the primary Node export and legacy constructor remains an alias", () => {
+test("abuurAI is the only public factory and does not export legacy aliases", () => {
   assert.equal(typeof abuurAI, "function");
-  assert.equal(createSomaliAI, abuurAI);
+  assert.equal(nodeIndex.createSomaliAI, undefined);
+  assert.equal(nodeIndex.createAbuurAI, undefined);
+  assert.equal(browserIndex.createSomaliAI, undefined);
+  assert.equal(browserIndex.createAbuurAI, undefined);
   assert.deepEqual(abuurAI().getProviders(), []);
 });
 
@@ -116,32 +121,32 @@ test("Somali provider-specific keys and model IDs normalize correctly", () => {
     }
   });
 
-  test("per-call tilmaamo applies to conversations and streaming", async () => {
-    const requests = [];
-    const ai = abuurAI({ bixiye: "fake" });
-    ai.providers.register("fake", {
-      generate: async (request) => {
-        requests.push(request);
-        return { text: "Jawaab." };
-      },
-      async *stream(request) {
-        requests.push(request);
-        yield { text: "Jawaab." };
-      }
-    });
-
-    await ai.wadaSheekeysi("Salaan", { tilmaamo: "Tilmaamaha wada sheekaysiga." });
-    for await (const _chunk of ai.qulqul({
-      prompt: "Salaan",
-      tilmaamo: "Tilmaamaha qulqulka."
-    })) {}
-
-    assert.equal(requests[0].systemPrompt, "Tilmaamaha wada sheekaysiga.");
-    assert.equal(requests[1].systemPrompt, "Tilmaamaha qulqulka.");
-  });
-
   assert.equal(ai.doorModel({ task: "conversation", bixiye: "openai" }).provider, "openai");
   assert.equal(ai.doorModel({ task: "conversation", bixiye: "openai", moodel: "openai-test" }).model, "openai-test");
+});
+
+test("per-call tilmaamo applies to conversations and streaming", async () => {
+  const requests = [];
+  const ai = abuurAI({ bixiye: "fake" });
+  ai.providers.register("fake", {
+    generate: async (request) => {
+      requests.push(request);
+      return { text: "Jawaab." };
+    },
+    async *stream(request) {
+      requests.push(request);
+      yield { text: "Jawaab." };
+    }
+  });
+
+  await ai.wadaSheekeysi("Salaan", { tilmaamo: "Tilmaamaha wada sheekaysiga." });
+  for await (const _chunk of ai.qulqul({
+    prompt: "Salaan",
+    tilmaamo: "Tilmaamaha qulqulka."
+  })) {}
+
+  assert.equal(requests[0].systemPrompt, "Tilmaamaha wada sheekaysiga.");
+  assert.equal(requests[1].systemPrompt, "Tilmaamaha qulqulka.");
 });
 
 test("conflicting Somali and compatibility configuration names fail clearly", () => {

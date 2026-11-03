@@ -102,14 +102,10 @@ const jawaab = await ai.weydii("Salaan!");
 **Furaha lagu daro koodhka browser-ka dadka isticmaala way arki karaan.**
 SDK-gu ma qarin karo furahaas. Haddii aad sidaas doorato, isticmaal furaha
 tijaabada oo xaddidan; ha gelin furahaaga wax-soo-saarka. Furayaasha
-xasaasiga ah ku hay server, kana wac server-kaas browser-ka. Habka
-`gateway: "connected"` wuxuu wacaa waddo server oo aad adigu bixisay; SDK-gu
-ma abuuro mana ilaaliyo server-kaas.
+xasaasiga ah ku hay server ammaan ah, kana wac server-kaas browser-ka.
 
-Browser entry-gu hadda wuxuu si toos ah u taageeraa Gemini. Wuxuu kaloo wici
-karaa Cloudflare Gateway haddii aad habayso, balse waddada iyo oggolaanshaheeda
-adiga ayaa maamulaya. Browser iyo Node.js mid walba wuxuu leeyahay entry gaar
-ah.
+Browser entry-gu wuxuu si toos ah u taageeraa Gemini. Browser iyo Node.js mid
+walba wuxuu leeyahay entry gaar ah.
 
 ## Su'aal weydii
 
@@ -225,9 +221,8 @@ npm ci
 npm test
 ```
 
-Tijaabooyinku waxay daboolaan Node.js, browser entry, adeegyada, iyo Worker
-tusaalaha. Tijaabooyinka caadiga ahi ma wacaan adeegyada AI ee tooska ah.
+Tijaabooyinku waxay daboolaan Node.js, browser entry, iyo adeegyada tooska ah.
+Tijaabooyinka caadiga ahi ma wacaan adeegyada AI ee tooska ah.
 
 Akhris dheeraad ah: [Advanced configuration](./ADVANCED.md) ·
-[Browser demo](./examples/browser/README.md) ·
-[Cloudflare Worker example](./templates/cloudflare-ai-gateway/README.md)
+[Browser demo](./examples/browser/README.md)

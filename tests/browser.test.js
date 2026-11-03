@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/browser.js";
+import { abuurAI } from "../src/browser.js";
 
 test("browser entry registers Gemini and sends a browser-compatible request", async () => {
   let requestUrl;
   let requestInit;
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "gemini",
     model: "gemini-2.5-flash",
     apiKey: "fake-browser-test-key",
@@ -34,7 +34,7 @@ test("browser entry registers Gemini and sends a browser-compatible request", as
 
 test("browser Gemini errors do not disclose the API key", async () => {
   const key = "fake-browser-secret";
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "gemini",
     apiKey: key,
     fetch: async () => Response.json({
@@ -50,7 +50,7 @@ test("browser Gemini errors do not disclose the API key", async () => {
 });
 
 test("browser Gemini requires an explicit key and never falls back to Node environment", async () => {
-  const ai = createSomaliAI({ provider: "gemini" });
+  const ai = abuurAI({ provider: "gemini" });
   await assert.rejects(
     ai.weydii("Test"),
     /Gemini API key is required.*Browser keys are public/

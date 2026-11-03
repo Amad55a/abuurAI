@@ -10,7 +10,4 @@ export function abuurAI(options = {}) {
   return createAbuurAI(options, nodeProviderFactories);
 }
 
-/** @deprecated Use abuurAI. */
-export const createSomaliAI = abuurAI;
-
 export const version = "0.2.0";

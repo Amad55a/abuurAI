@@ -6,6 +6,5 @@ export const defaultConfig = {
   provider: null,
   model: null,
   apiKey: null,
-  systemPrompt: null,
-  gateway: null
+  systemPrompt: null
 };

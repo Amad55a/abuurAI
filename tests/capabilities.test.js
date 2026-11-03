@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 import { getProviderOptions } from "../src/core/model-selector.js";
 
 test("capability discovery reports adapter support without credentials", () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     model: "custom-text-v1",
     generate: async () => ({ text: "ok" }),
@@ -29,13 +29,13 @@ test("capability discovery reports adapter support without credentials", () => {
 
 test("capability configuration restricts adapter features and validates identifiers", () => {
   assert.throws(
-    () => createSomaliAI({
+    () => abuurAI({
       providers: { gemini: { model: "model", capabilities: ["imaginary"] } }
     }),
     /supported capability identifiers/
   );
 
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["text-generation", "conversation", "image-understanding"],
     generate: async () => ({ text: "ok" }),
@@ -64,7 +64,7 @@ test("provider options never reuse another provider's explicit API key", () => {
 });
 
 test("capability-aware model selection filters models by adapter operation", () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     mode: "auto",
     providers: {
       gemini: {
@@ -90,13 +90,13 @@ test("capability-aware model selection filters models by adapter operation", () 
 });
 
 test("local text normalization preserves Somali words and normalizes whitespace", () => {
-  const ai = createSomaliAI();
+  const ai = abuurAI();
   assert.equal(ai.caadiyeQoraal("  Salaan,\u00a0sidee   tahay?  "), "Salaan, sidee tahay?");
   assert.throws(() => ai.caadiyeQoraal(" "), /non-empty text/);
 });
 
 test("voice, image, document, generation and embedding methods use adapter hooks", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: [
       "speech-recognition",
@@ -191,7 +191,7 @@ test("voice, image, document, generation and embedding methods use adapter hooks
 });
 
 test("unsupported built-in media operations fail explicitly and validate requests", async () => {
-  const ai = createSomaliAI({
+  const ai = abuurAI({
     provider: "gemini",
     apiKey: "fake-key",
     model: "fake-model",
@@ -225,7 +225,7 @@ test("unsupported built-in media operations fail explicitly and validate request
 });
 
 test("structured JSON output is parsed and validated against its schema", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["structured-output"],
     generateStructured: async () => ({
@@ -248,7 +248,7 @@ test("structured JSON output is parsed and validated against its schema", async 
   ai.providers.register("broken", {
     generateStructured: async () => ({ text: "not JSON" })
   });
-  const broken = createSomaliAI({ provider: "broken" });
+  const broken = abuurAI({ provider: "broken" });
   broken.providers.register("broken", {
     capabilities: ["structured-output"],
     generateStructured: async () => ({ text: '{"name":42}' })
@@ -267,7 +267,7 @@ test("structured JSON output is parsed and validated against its schema", async 
 });
 
 test("knowledge search supports explicit local semantic retrieval with checked dimensions", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["embeddings"],
     createEmbedding: async ({ texts }) => ({
@@ -304,7 +304,7 @@ test("knowledge search supports explicit local semantic retrieval with checked d
 });
 
 test("semantic search integrates an explicit external vector-store adapter", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["embeddings"],
     createEmbedding: async ({ texts }) => ({
@@ -360,7 +360,7 @@ test("semantic search integrates an explicit external vector-store adapter", asy
 
 test("agent executes only registered tools with schema-checked arguments", async () => {
   let executions = 0;
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["tool-calling"],
     generateWithTools: async ({ step }) => step === 1
@@ -391,7 +391,7 @@ test("agent executes only registered tools with schema-checked arguments", async
 });
 
 test("agent requires approval for sensitive tools and blocks unregistered calls", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["tool-calling"],
     generateWithTools: async () => ({
@@ -420,7 +420,7 @@ test("agent requires approval for sensitive tools and blocks unregistered calls"
     /not explicitly provided/
   );
 
-  const noAgent = createSomaliAI({ provider: "plain" });
+  const noAgent = abuurAI({ provider: "plain" });
   noAgent.providers.register("plain", { generate: async () => ({ text: "ok" }) });
   await assert.rejects(
     () => noAgent.wakiilAI({ task: "No tool support" }),
@@ -429,7 +429,7 @@ test("agent requires approval for sensitive tools and blocks unregistered calls"
 });
 
 test("agent enforces its execution deadline and honors cancellation", async () => {
-  const ai = createSomaliAI({ provider: "custom" });
+  const ai = abuurAI({ provider: "custom" });
   ai.providers.register("custom", {
     capabilities: ["tool-calling"],
     generateWithTools: async ({ signal }) =>

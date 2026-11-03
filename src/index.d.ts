@@ -5,8 +5,7 @@ export type ProviderId =
   | "mistral"
   | "deepseek"
   | "cohere"
-  | "xai"
-  | "openrouter";
+  | "xai";
 
 export type ProviderCapability =
   | "text-generation"
@@ -37,13 +36,6 @@ export type ProviderTask =
   | "classification"
   | "conversation";
 
-export interface CloudflareGatewayConfig {
-  type: "cloudflare";
-  accountId: string;
-  gatewayId: string;
-  endpoint: string;
-}
-
 export interface ProviderConfig {
   furahaAPI?: string;
   moodel?: string;
@@ -71,9 +63,6 @@ export interface AbuurAIOptions {
   /** @deprecated Use tilmaamo. */
   systemPrompt?: string;
   providers?: Partial<Record<ProviderId, ProviderConfig>>;
-  gateway?: CloudflareGatewayConfig | "connected";
-  gatewayEndpoint?: string;
-  gatewayTimeoutMs?: number;
   mode?: "manual" | "auto";
   language?: string;
   providerPreference?: ProviderId[];
@@ -81,9 +70,6 @@ export interface AbuurAIOptions {
   pricing?: Record<string, ModelPricing | Record<string, ModelPricing>>;
   fetch?: typeof fetch;
 }
-
-/** @deprecated Use AbuurAIOptions. */
-export type SomaliAIOptions = AbuurAIOptions;
 
 export interface ModelPricing {
   inputPerMillion: number;
@@ -237,9 +223,6 @@ export interface AbuurAIClient {
   };
 }
 
-/** @deprecated Use AbuurAIClient. */
-export type SomaliAIClient = AbuurAIClient;
-
 export interface VideoJob {
   id: string;
   status: "queued" | "processing" | "completed" | "failed" | "cancelled";
@@ -247,8 +230,6 @@ export interface VideoJob {
 }
 
 export declare function abuurAI(options?: AbuurAIOptions): AbuurAIClient;
-/** @deprecated Use abuurAI. */
-export declare function createSomaliAI(options?: SomaliAIOptions): SomaliAIClient;
 export declare const version: string;
 
 export interface SomaliPromptTemplate {

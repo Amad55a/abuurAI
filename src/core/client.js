@@ -1,11 +1,6 @@
 import { defaultConfig } from "./config.js";
 import { createProviderManager } from "../providers/provider-manager.js";
 import { createWeydii } from "../somali/weydii.js";
-import { createCloudflareGatewayProvider } from "../providers/cloudflare-gateway-provider.js";
-import {
-  createConnectedGatewayProvider,
-  validateConnectedGatewayEndpoint
-} from "../providers/connected-gateway-provider.js";
 import { createTextOperations, createConversation } from "../somali/operations.js";
 import { ogaawLuqad as detectLanguage } from "../somali/language-detection.js";
 import { caadiyeQoraal as normalizeText } from "../somali/normalize.js";
@@ -144,53 +139,6 @@ function normalizeRequestOptions(options) {
   return normalized;
 }
 
-function validateGatewayConfiguration(gateway) {
-  if (gateway === null || typeof gateway !== "object" || Array.isArray(gateway)) {
-    throw new Error("gateway must be a Cloudflare gateway configuration object.");
-  }
-  if (gateway.type !== "cloudflare") {
-    throw new Error('gateway.type must be "cloudflare".');
-  }
-  if (typeof gateway.accountId !== "string" ||
-    !/^[a-f0-9]{32}$/i.test(gateway.accountId)) {
-    throw new Error("gateway.accountId must be a 32-character Cloudflare account ID.");
-  }
-  if (typeof gateway.gatewayId !== "string" ||
-    !/^[a-zA-Z0-9_-]{1,64}$/.test(gateway.gatewayId)) {
-    throw new Error("gateway.gatewayId must be a non-empty gateway identifier.");
-  }
-  if (typeof gateway.endpoint !== "string" || !gateway.endpoint.trim()) {
-    throw new Error("gateway.endpoint must be a non-empty Worker URL.");
-  }
-
-  let endpoint;
-  try {
-    endpoint = new URL(gateway.endpoint);
-  } catch {
-    throw new Error("gateway.endpoint must be a valid absolute URL.");
-  }
-  const localHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
-  if (
-    (endpoint.protocol !== "https:" &&
-      !(endpoint.protocol === "http:" && localHosts.has(endpoint.hostname))) ||
-    endpoint.username ||
-    endpoint.password ||
-    endpoint.search ||
-    endpoint.hash
-  ) {
-    throw new Error(
-      "gateway.endpoint must use HTTPS (HTTP is allowed only for localhost) and must not contain credentials, query, or fragment."
-    );
-  }
-
-  return {
-    type: "cloudflare",
-    accountId: gateway.accountId,
-    gatewayId: gateway.gatewayId,
-    endpoint: endpoint.toString().replace(/\/$/, "")
-  };
-}
-
 export function createAbuurAI(inputOptions = {}, providerFactories) {
   const options = normalizeConfiguration(inputOptions);
   if (options === null || typeof options !== "object" || Array.isArray(options)) {
@@ -203,43 +151,6 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
     (typeof options.apiKey !== "string" || !options.apiKey.trim())
   ) {
     throw new Error("furahaAPI (API key) must be a non-empty string.");
-  }
-
-  const gateway = options.gateway === undefined
-    ? null
-    : options.gateway === "connected"
-      ? "connected"
-      : validateGatewayConfiguration(options.gateway);
-
-  if (gateway === "connected") {
-    const selectedProvider = options.provider || "gemini";
-    if (selectedProvider !== "gemini") {
-      throw new Error('gateway: "connected" currently supports only the Gemini provider.');
-    }
-    if (options.mode === "auto") {
-      throw new Error('gateway: "connected" does not support automatic provider selection.');
-    }
-    if (options.apiKey || options.providers?.gemini?.apiKey) {
-      throw new Error(
-        'Do not configure a Gemini API key with gateway: "connected"; credentials belong on the trusted Worker/Gateway.'
-      );
-    }
-  } else if (options.gatewayEndpoint !== undefined) {
-    throw new Error("gatewayEndpoint can only be used with gateway: \"connected\".");
-  }
-
-  const gatewayEndpoint = gateway === "connected"
-    ? validateConnectedGatewayEndpoint(options.gatewayEndpoint)
-    : undefined;
-  const gatewayTimeoutMs = options.gatewayTimeoutMs === undefined
-    ? 30_000
-    : options.gatewayTimeoutMs;
-  if (
-    !Number.isSafeInteger(gatewayTimeoutMs) ||
-    gatewayTimeoutMs < 1 ||
-    gatewayTimeoutMs > 120_000
-  ) {
-    throw new Error("gatewayTimeoutMs must be an integer from 1 to 120000.");
   }
 
   if (
@@ -302,9 +213,6 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
       if (!SUPPORTED_PROVIDER_IDS.includes(name)) {
         throw new Error(`Provider "${name}" is not supported.`);
       }
-      if (gateway === "connected" && name !== "gemini") {
-        throw new Error('gateway: "connected" currently supports only the Gemini provider.');
-      }
       if (
         providerOptions === null ||
         typeof providerOptions !== "object" ||
@@ -319,11 +227,6 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
           !providerOptions.apiKey.trim())
       ) {
         throw new Error(`${name} furahaAPI (API key) must be a non-empty string.`);
-      }
-      if (name === "openrouter" && providerOptions.apiKey) {
-        throw new Error(
-          "OpenRouter credentials must be configured server-side on the Cloudflare Worker."
-        );
       }
       if (
         providerOptions.model !== undefined &&
@@ -348,10 +251,7 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
 
   const config = {
     ...defaultConfig,
-    ...options,
-    gateway,
-    gatewayEndpoint,
-    gatewayTimeoutMs
+    ...options
   };
 
   const providerManager = createProviderManager();
@@ -370,58 +270,6 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
   }
 
   function getProvider(name) {
-    if (config.gateway === "connected") {
-      if (name !== "gemini") {
-        throw new Error('gateway: "connected" currently supports only the Gemini provider.');
-      }
-      if (providerManager.list().includes(name)) {
-        return providerManager.get(name);
-      }
-      const providerOptions = getProviderOptions(name, config);
-      const provider = createConnectedGatewayProvider({
-        provider: name,
-        model: providerOptions.model,
-        endpoint: config.gatewayEndpoint,
-        timeoutMs: config.gatewayTimeoutMs,
-        fetch: providerOptions.fetch
-      });
-      providerManager.register(name, provider);
-      return provider;
-    }
-
-    if (config.gateway) {
-      if (!SUPPORTED_PROVIDER_IDS.includes(name)) {
-        throw new Error(
-          `Provider "${name}" is not supported through Cloudflare gateway mode.`
-        );
-      }
-
-      if (providerManager.list().includes(name)) {
-        return providerManager.get(name);
-      }
-
-      const providerOptions = getProviderOptions(name, config);
-      if (!providerOptions.model) {
-        throw new Error(
-          `A model must be configured for provider "${name}" in Cloudflare gateway mode.`
-        );
-      }
-      const provider = createCloudflareGatewayProvider({
-        gateway: config.gateway,
-        provider: name,
-        model: providerOptions.model,
-        fetch: providerOptions.fetch
-      });
-      providerManager.register(name, provider);
-      return provider;
-    }
-
-    if (name === "openrouter") {
-      throw new Error(
-        'Provider "openrouter" is supported only through Cloudflare gateway mode.'
-      );
-    }
-
     if (providerManager.list().includes(name)) {
       return providerManager.get(name);
     }
@@ -680,15 +528,6 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
       model: publicModel,
       systemPrompt: publicInstructions,
       mode: config.mode || "manual",
-      ...(config.gateway === "connected"
-        ? {
-            gateway: "connected",
-            gatewayEndpoint: config.gatewayEndpoint,
-            gatewayTimeoutMs: config.gatewayTimeoutMs
-          }
-        : config.gateway
-          ? { gateway: { ...config.gateway } }
-          : {}),
       ...(config.providerPreference !== undefined
         ? { providerPreference: [...config.providerPreference] }
         : {}),
@@ -1710,5 +1549,3 @@ export function createAbuurAI(inputOptions = {}, providerFactories) {
     }
   };
 }
-
-export const createSomaliAI = createAbuurAI;
