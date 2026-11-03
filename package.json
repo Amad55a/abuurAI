@@ -1,6 +1,6 @@
 {
   "name": "abuur-ai",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A Somali-first JavaScript AI SDK for Gemini, OpenAI, Anthropic, Mistral, DeepSeek, Cohere, and xAI. Works in Node.js and the browser.",
   "repository": {
     "type": "git",
