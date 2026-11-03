@@ -4,7 +4,7 @@ import { abuurAI } from "../src/index.js";
 const ai = abuurAI({
   bixiye: "gemini",
   furahaAPI: process.env.GEMINI_API_KEY,
-  moodel: "gemini-2.5-flash"
+  moodel: "gemini-3.8-flash"
 });
 
 const tests = [

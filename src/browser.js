@@ -25,4 +25,4 @@ export function abuurAI(options = {}) {
   return createAbuurAI(options, browserProviderFactories);
 }
 
-export const version = "0.2.0";
+export const version = "0.2.2";

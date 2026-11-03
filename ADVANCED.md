@@ -17,11 +17,11 @@ const ai = abuurAI({
   providers: {
     gemini: {
       furahaAPI: process.env.GEMINI_API_KEY,
-      moodel: "gemini-2.5-flash"
+      moodel: "gemini-3.8-flash"
     },
     anthropic: {
       furahaAPI: process.env.ANTHROPIC_API_KEY,
-      moodel: "claude-3-5-sonnet-20241022"
+      moodel: "claude-sonnet-5-5"
     }
   },
   providerPreference: ["gemini", "anthropic"],
@@ -45,9 +45,11 @@ discover models, or verify account access.
 
 ## Browser and server-side safety
 
-The browser entry directly supports Gemini, and direct browser requests require
-`furahaAPI`. Anyone using the browser bundle can inspect that key. For
-production keys, have the browser call your own trusted backend server instead.
+The browser entry directly supports Gemini, OpenRouter, Ollama, Perplexity,
+Meta, and NVIDIA. Direct browser requests require provider credentials for
+hosted services, and anyone using the browser bundle can inspect those keys.
+For production keys, have the browser call your own trusted backend server
+instead.
 
 ## Conversation and request options
 
@@ -92,12 +94,13 @@ heuristic and does not guarantee a language or dialect classification.
 
 ## Capabilities and streaming
 
-The seven direct provider adapters implement text generation and streaming,
-subject to each provider's API and model support. `awoodahaModelka()` reports
-adapter-level functionality, not live model availability. The bundled
-adapters do not implement image/audio/video generation or analysis, embeddings,
-structured output, native tool calling, or dialect detection. Those operations
-require an appropriate custom adapter and otherwise reject with an explicit
+The twelve Node provider adapters implement text generation and streaming,
+subject to each provider's API and model support. The Gemini browser adapter
+does not implement streaming. `awoodahaModelka()` reports adapter-level
+functionality, not live model availability. The bundled adapters do not
+implement image/audio/video generation or analysis, embeddings, structured
+output, native tool calling, or dialect detection. Those operations require an
+appropriate custom adapter and otherwise reject with an explicit
 unsupported-capability error.
 
 Consume text deltas with `qulqul()`:
