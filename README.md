@@ -58,13 +58,18 @@ import { abuurAI } from "abuur-ai";
 const ai = abuurAI({
   bixiye: "gemini",
   furahaAPI: process.env.GEMINI_API_KEY,
-  moodel: "gemini-3.8-flash",
+  moodel: "gemini-2.5-flash",
   tilmaamo: "Ku jawaab Af-Soomaali."
 });
 
 const jawaab = await ai.weydii("Salaan!");
 console.log(jawaab.text);
 ```
+
+This quick-start uses the requested Gemini 2.5 model ID. As of this guide's
+verification date, Google limits Gemini 2.5 API access to existing users and
+plans to route this ID to Gemini 3.5 Flash-Lite starting 1 December 2026.
+For a new integration, set `moodel: "gemini-3.8-flash"` instead.
 
 `weydii()` returns a promise for an `AIResponse` containing `text`, `provider`,
 `model`, and (when reported by the provider) `usage`. The configured provider
@@ -144,9 +149,9 @@ it, your account can access it, or it supports every feature in this SDK.
 | Provider / `bixiye` | Endpoint used by this adapter | Key and default | Verified example model IDs and official catalogue |
 | --- | --- | --- | --- |
 | Google Gemini / `gemini` | Google GenAI SDK; browser uses `generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `GEMINI_API_KEY`; selector default `gemini-2.5-flash` (deprecated/limited for new users) | `gemini-3.8-flash`, `gemini-4-argon`; [Google model catalogue](https://ai.google.dev/gemini-api/docs/models) |
-| OpenAI / `openai` | OpenAI SDK Responses API | `OPENAI_API_KEY`; no SDK model default | `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`; [OpenAI model catalogue](https://developers.openai.com/api/docs/models) |
+| OpenAI / `openai` | OpenAI SDK Responses API (`https://api.openai.com/v1/responses`) | `OPENAI_API_KEY`; no SDK model default | `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`; [OpenAI model catalogue](https://developers.openai.com/api/docs/models) |
 | Anthropic / `anthropic` | `https://api.anthropic.com/v1/messages` | `ANTHROPIC_API_KEY`; no default | `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`; [Anthropic model overview](https://platform.claude.com/docs/en/models/overview) |
-| Mistral / `mistral` | `https://api.mistral.ai/v1/chat/completions` | `MISTRAL_API_KEY`; no default | `mistral-large-4`, `mistral-small-4`; [Mistral models](https://docs.mistral.ai/models/) |
+| Mistral / `mistral` | `https://api.mistral.ai/v1/chat/completions` | `MISTRAL_API_KEY`; no default | `mistral-large-4`, `mistral-small-latest`; [Mistral models](https://docs.mistral.ai/models/) |
 | DeepSeek / `deepseek` | `https://api.deepseek.com/chat/completions` | `DEEPSEEK_API_KEY`; no default | `deepseek-flash`, `deepseek-v4-pro`; [DeepSeek models and pricing](https://api-docs.deepseek.com/quick_start/pricing) |
 | Cohere / `cohere` | `https://api.cohere.com/v2/chat` | `COHERE_API_KEY`; no default | `command-a-plus-05-2026`, `command-a-03-2025`, `command-a-reasoning-08-2025`; [Cohere models](https://docs.cohere.com/v2/docs/models) |
 | xAI / `xai` | `https://api.x.ai/v1/chat/completions` | `XAI_API_KEY`; no default | `grok-4.7`, `grok-4.6`, `grok-4.5`; [xAI models](https://docs.x.ai/developers/models) |
@@ -198,10 +203,11 @@ Model catalogues:
   and `cinwaankaAPI: "https://ollama.com/v1"`; cloud model availability and
   access are controlled by Ollama.
 - **Perplexity:** This adapter currently sends legacy Sonar Chat Completions
-  requests. Perplexity announced the end of Sonar Chat Completions support on
-  27 September 2026 and recommends its newer Agent API. This SDK version does
-  not implement that Agent API; synchronous and streaming legacy requests may
-  be reformulated during the provider's migration. Treat this integration as
+  requests. Perplexity ended Sonar Chat Completions support on 27 September
+  2026 and recommends its newer Agent API. Perplexity says synchronous and
+  streaming requests continue to work while being gradually reformulated as
+  Agent API requests; asynchronous Sonar requests are no longer supported.
+  This SDK version does not implement the Agent API. Treat this integration as
   transitional and verify it before relying on it.
 - **Meta:** This is the official Meta Model API at `api.meta.ai`, using an API
   key from the Meta Model API dashboard and the OpenAI-compatible
@@ -353,11 +359,19 @@ for await (const chunk of ai.qulqul({ prompt: "Sheeg sheeko gaaban." })) {
 }
 ```
 
-Cancel supported single requests with the standard `AbortSignal`:
+Cancel a streaming request with the standard `AbortSignal`:
 
 ```js
 const controller = new AbortController();
-const pending = ai.weydii("Write a long answer.", { signal: controller.signal });
+const consume = async () => {
+  for await (const chunk of ai.qulqul({
+    prompt: "Write a long answer.",
+    signal: controller.signal
+  })) {
+    if (chunk.text) process.stdout.write(chunk.text);
+  }
+};
+const pending = consume();
 setTimeout(() => controller.abort(), 100);
 try {
   await pending;
@@ -367,10 +381,12 @@ try {
 }
 ```
 
-`qulqul({ prompt, signal })` also accepts an abort signal. Cancellation support
-depends on the underlying provider transport; this SDK does not promise that
-the provider will stop billing immediately. The general text operation
-wrappers and conversation methods do not forward `signal`.
+`qulqul()` and `wakiilAI()` accept an abort signal. `weydii()` includes
+`signal` in its adapter request for custom adapters, but the bundled
+text-generation adapters do not currently forward it to the underlying
+non-streaming request. Cancellation support depends on the provider transport;
+the SDK cannot promise that billing stops immediately. The general text
+operation wrappers and conversation methods do not forward `signal`.
 
 Streaming is SSE-based for the HTTP adapters and provider SDK streams for
 OpenAI/Gemini. The browser Gemini adapter does not implement streaming.
@@ -417,6 +433,42 @@ streaming (Cohere and Claude may have provider-side extra features, but this
 adapter does not implement them). Structured JSON, embeddings, media methods,
 dialect detection, and agent tool calling need a custom adapter registered
 through `ai.providers.register()`. Unsupported capabilities reject explicitly.
+This optional fake adapter demonstrates the extension contract for advanced
+API examples; it does not call an AI service or provide production model
+capabilities:
+
+```js
+const demo = abuurAI({ bixiye: "demo" });
+demo.providers.register("demo", {
+  model: "demo-v1",
+  capabilities: [
+    "text-generation", "conversation", "streaming",
+    "structured-output", "embeddings", "image-understanding",
+    "document-understanding", "image-generation", "video-generation",
+    "video-job-status", "video-retrieval", "video-cancellation",
+    "speech-recognition", "text-to-speech", "tool-calling",
+    "dialect-detection"
+  ],
+  generate: async ({ prompt }) => ({ text: prompt, provider: "demo", model: "demo-v1" }),
+  stream: async function* ({ prompt }) { yield { text: prompt }; },
+  generateStructured: async () => ({ data: { name: "Ayaan", age: 20 } }),
+  createEmbedding: async ({ texts }) => ({ embeddings: texts.map(() => [1, 0]) }),
+  analyzeImage: async ({ prompt }) => ({ text: prompt }),
+  analyzeDocument: async ({ prompt }) => ({ text: prompt }),
+  generateImage: async () => ({ images: ["data:image/png;base64,AA=="] }),
+  generateVideo: async () => ({ id: "demo-1", status: "queued" }),
+  getVideoJob: async ({ id }) => ({ id, status: "completed" }),
+  getVideoResult: async ({ id }) => ({ id, status: "completed", video: "demo-video" }),
+  cancelVideoJob: async ({ id }) => ({ id, status: "cancelled" }),
+  transcribeAudio: async () => ({ text: "Salaan" }),
+  synthesizeSpeech: async () => ({ audio: "demo-audio" }),
+  generateWithTools: async () => ({ finalAnswer: "Demo response" }),
+  detectDialect: async () => ({ dialect: "unknown", confidence: null })
+});
+```
+For the capability-specific API examples below, use this mock `demo` client
+instead of the regular `ai` client (for example, `demo.sameeEmbedding(...)`).
+Replace it with a real adapter before production use.
 
 ### Structured JSON with a custom adapter
 
@@ -569,23 +621,23 @@ provider or network errors after redacting known API keys.
 | `nadiifi(options?)` | `{ bixiye?: ProviderId }` → `boolean` | `ai.nadiifi()` clears all conversation histories; may clear one with `{ bixiye: "gemini" }`. |
 | `doorModel(options?)` | `ModelSelectionOptions` → selection metadata | `ai.doorModel({ task: "coding" })`. Requires a configured candidate; validates tasks, providers, capabilities, and model IDs. |
 | `awoodahaModelka(options?)` | `{ bixiye?, moodel? }` → capability report | `ai.awoodahaModelka()`. Reports adapter-level capabilities, not live model/account support. |
-| `raadsoAqoon(input)` | question, documents, retrieval settings → `{ answer, sources, hasEnoughInformation, provider, model }` | `await ai.raadsoAqoon({ question: "…", documents: [{ id: "a", content: "…" }] })`. Requires nonempty documents; semantic mode requires embeddings. |
+| `raadsoAqoon(input)` | question, documents, retrieval settings → `{ answer, sources, hasEnoughInformation, provider, model }` | `await ai.raadsoAqoon({ question: "education", documents: [{ id: "a", content: "Education supports communities." }] })`. Requires nonempty documents; semantic mode requires embeddings. |
 | `ogaawLuqad(input)` | text or `{ text }` → language-detection record | `ai.ogaawLuqad("Waa salaaman tahay")`. Local heuristic; confidence is uncalibrated. |
-| `ogaawLahjad(input)` | text or `{ text, bixiye?, language? }` → dialect record or promise | `ai.ogaawLahjad("Qoraal Soomaali")`. Bundled adapters do not verify Somali dialect; normally returns `unknown`. |
+| `ogaawLahjad(input)` | text or `{ text, bixiye?, language? }` → dialect record or promise | `await ai.ogaawLahjad("Qoraal Soomaali")`. Bundled adapters do not verify Somali dialect; normally returns `unknown`. |
 | `caadiyeQoraal(input)` | text or `{ text }` → normalized string/record | `ai.caadiyeQoraal("  Salaan   wanaagsan ")`. Local whitespace/text normalization; rejects empty input. |
-| `hadalUqor(input)` | `{ audio, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await ai.hadalUqor({ audio, mimeType: "audio/wav" })`. Needs `speech-recognition` adapter; media max 25 MB. |
-| `qoraalUhadal(input)` | `{ text, ...AIRequestOptions }` → `Promise<Record>` | `await ai.qoraalUhadal({ text: "Salaan" })`. Needs `text-to-speech` adapter. |
-| `wakiilAI(input)` | task, tools, limits, optional signal/approve/memory → `Promise<Record>` | See [agent example](#registered-tools-and-agents). Requires adapter `generateWithTools`; tool execution is application code. |
-| `falanqeeSawir(input)` | `{ image, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | Needs `image-understanding` adapter; image max 25 MB and valid image MIME type. |
-| `falanqeeDukumenti(input)` | `{ document, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | Needs `document-understanding` adapter; PDF, RTF, DOCX and text MIME types, max 25 MB. |
+| `hadalUqor(input)` | `{ audio, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.hadalUqor({ audio: "data:audio/wav;base64,AA==", mimeType: "audio/wav" })`. Needs `speech-recognition`; media max 25 MB. |
+| `qoraalUhadal(input)` | `{ text, ...AIRequestOptions }` → `Promise<Record>` | `await demo.qoraalUhadal({ text: "Salaan" })`. Needs `text-to-speech`. |
+| `wakiilAI(input)` | task, tools, limits, optional signal/approve/memory → `Promise<Record>` | `await demo.wakiilAI({ task: "Give a short answer", tools: [] })`. Requires adapter `generateWithTools`; tool execution is application code. |
+| `falanqeeSawir(input)` | `{ image, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.falanqeeSawir({ image: "data:image/png;base64,AA==", prompt: "Describe it" })`. Needs `image-understanding`; image max 25 MB and valid image MIME type. |
+| `falanqeeDukumenti(input)` | `{ document, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.falanqeeDukumenti({ document: "Sample text", prompt: "Summarize it" })`. Needs `document-understanding`; PDF, RTF, DOCX and text MIME types, max 25 MB. |
 | `sooSaarJSON(input)` | `{ prompt, schema, ...AIRequestOptions }` → `{ data, provider, model, usage? }` | See [structured JSON](#structured-json-with-a-custom-adapter). Needs `generateStructured`; rejects invalid JSON/schema. |
-| `sameeEmbedding(input)` | `{ text? \| texts?, ...AIRequestOptions }` → `{ embeddings, provider, model, usage? }` | `await ai.sameeEmbedding({ text: "Somali text" })`. Needs adapter `createEmbedding`; checks vector shape and dimensions. |
+| `sameeEmbedding(input)` | `{ text?: string, texts?: string[], ...AIRequestOptions }` → `{ embeddings, provider, model, usage? }` | `await demo.sameeEmbedding({ text: "Somali text" })`. Needs adapter `createEmbedding`; checks vector shape and dimensions. |
 | `isuEegEmbedding(left, right)` | two `number[]` → cosine similarity `number` | `ai.isuEegEmbedding([1, 0], [0, 1])`. Equal nonzero dimensions required. |
-| `sameeSawir(input)` | `{ prompt, ...AIRequestOptions }` → `{ images, provider, model }` | Needs adapter `generateImage`; rejects empty/unusable image output. |
-| `sameeMuuqaal(input)` | `{ prompt, ...AIRequestOptions }` → `VideoJob` | Needs `generateVideo`; returns job with id and supported status. |
-| `hubiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<VideoJob>` | Needs `getVideoJob`; returned job id must match. |
-| `helMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | Needs `getVideoResult`; completed job output required. |
-| `joojiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | Needs `cancelVideoJob`. |
+| `sameeSawir(input)` | `{ prompt, ...AIRequestOptions }` → `{ images, provider, model }` | `await demo.sameeSawir({ prompt: "A landscape" })`. Needs adapter `generateImage`; rejects empty/unusable image output. |
+| `sameeMuuqaal(input)` | `{ prompt, ...AIRequestOptions }` → `VideoJob` | `await demo.sameeMuuqaal({ prompt: "A short clip" })`. Needs `generateVideo`; returns job with id and supported status. |
+| `hubiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<VideoJob>` | `await demo.hubiMuuqaal({ id: "demo-1" })`. Needs `getVideoJob`; returned job id must match. |
+| `helMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | `await demo.helMuuqaal({ id: "demo-1" })`. Needs `getVideoResult`; completed job output required. |
+| `joojiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | `await demo.joojiMuuqaal({ id: "demo-1" })`. Needs `cancelVideoJob`. |
 | `qulqul(input)` | `{ prompt, bixiye?, tilmaamo?, language?, signal? }` → `AsyncIterable<AIStreamChunk>` | See [streaming](#conversations-streaming-and-cancellation). Requires adapter `stream`. |
 | `cabirIsticmaalka(options?)` | `{ reset?: boolean }` → usage snapshot | `ai.cabirIsticmaalka({ reset: true })` returns then resets counters. |
 | `getConfig()` | no args → public safe config | `ai.getConfig()`. API keys/provider secrets are not returned. |
@@ -603,7 +655,7 @@ The `ai.providers` registry exposes three additional methods:
 
 `src/index.js` exports `abuurAI`, `version`, `somaliPromptTemplates`,
 `getSomaliPromptTemplate(id)`, and `renderSomaliPromptTemplate(id, values)`.
-There are no public `createAbuurAI` or `createSomaliAI` factories.
+`abuurAI()` is the only public factory.
 
 ```js
 import {
@@ -644,6 +696,54 @@ console.log((await ai.weydii("Salaan!")).text);
 The Node entry supports all twelve providers. Store production credentials in
 deployment secrets or server environment variables. `.env` loading is the
 application's responsibility.
+
+### Complete minimal Node.js backend and browser caller
+
+Save this as `server.js`, set `GEMINI_API_KEY`, and run `node server.js`. The
+browser sends only the question to your server; the private provider key stays
+in the Node process:
+
+```js
+import { createServer } from "node:http";
+import { abuurAI } from "abuur-ai";
+
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: process.env.GEMINI_API_KEY,
+  moodel: "gemini-3.8-flash"
+});
+
+createServer(async (request, response) => {
+  if (request.method !== "POST" || request.url !== "/api/ask") {
+    response.writeHead(404).end();
+    return;
+  }
+  try {
+    let body = "";
+    for await (const part of request) body += part;
+    const { question } = JSON.parse(body);
+    const answer = await ai.weydii(question);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ text: answer.text }));
+  } catch (error) {
+    console.error("AI request failed:", error.message);
+    response.writeHead(400, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "The request could not be completed." }));
+  }
+}).listen(3000, "127.0.0.1");
+```
+
+In the browser, call the backend rather than importing a private key:
+
+```js
+const response = await fetch("/api/ask", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ question: "Salaan!" })
+});
+if (!response.ok) throw new Error("The server request failed.");
+console.log((await response.json()).text);
+```
 
 ### Browser entry
 
