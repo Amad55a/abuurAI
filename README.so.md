@@ -58,13 +58,19 @@ import { abuurAI } from "abuur-ai";
 const ai = abuurAI({
   bixiye: "gemini",
   furahaAPI: process.env.GEMINI_API_KEY,
-  moodel: "gemini-3.8-flash",
+  moodel: "gemini-2.5-flash",
   tilmaamo: "Ku jawaab Af-Soomaali."
 });
 
 const jawaab = await ai.weydii("Salaan!");
 console.log(jawaab.text);
 ```
+
+Tusaalahan bilowga ahi wuxuu adeegsadaa aqoonsiga Gemini 2.5 ee la codsaday.
+Markii dukumentigan la xaqiijiyey, Google wuxuu gelitaanka API-ga Gemini 2.5 ku
+xaddiday isticmaalayaashii hore, wuxuuna qorsheeyey in 1 Diseembar 2026
+aqoonsigan loo hago Gemini 3.5 Flash-Lite. Is-dhexgal cusub u dooro
+`moodel: "gemini-3.8-flash"`.
 
 `weydii()` waxay soo celisaa ballan (`Promise`) leh `AIResponse`: `text`,
 `provider`, `model`, iyo `usage` marka adeeg-bixiyuhu bixiyo. Adeegga iyo
@@ -122,8 +128,7 @@ gaar ah, balse ma abuuri karto hab aan adapter-ku hirgelin.
 Magacyada duugoobaya waa `provider`, `apiKey`, `model`, `instructions`,
 `systemPrompt`; `endpoint` waa magacii hore ee `cinwaankaAPI`. Haddii magacyada
 Somaliga iyo Ingiriisiga qiimayaal is khilaafsan leeyihiin, khalad baa la
-soo celiyaa. Provider config-guna wuxuu aqbalaa aliases-ka hore `apiKey`,
-`model`, iyo `endpoint`.
+soo celiyaa. Provider config-guna wuxuu aqbalaa magacyada Ingiriisiga ee hore.
 
 Furaha iyo moodelka guud waxay khuseeyaan adeegga la doortay oo keliya,
 mana noqdaan furaha adeeg kale. Adeegyo badan ku habee `providers`. Habaynta
@@ -143,9 +148,9 @@ la shaqayso.
 | Adeeg / `bixiye` | Endpoint-ka adapter-ku adeegsado | Furaha iyo default-ka | Tusaalooyin moodel iyo liiska rasmiga ah |
 | --- | --- | --- | --- |
 | Google Gemini / `gemini` | Google GenAI SDK; browser-ku wuxuu adeegsadaa `generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `GEMINI_API_KEY`; default-ka selector-ku waa `gemini-2.5-flash` (helitaankiisu wuu xaddidan yahay isticmaalayaasha cusub) | `gemini-3.8-flash`, `gemini-4-argon`; [liiska Google](https://ai.google.dev/gemini-api/docs/models) |
-| OpenAI / `openai` | Responses API ee OpenAI SDK | `OPENAI_API_KEY`; default ma jiro | `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`; [liiska OpenAI](https://developers.openai.com/api/docs/models) |
+| OpenAI / `openai` | Responses API ee OpenAI SDK (`https://api.openai.com/v1/responses`) | `OPENAI_API_KEY`; default ma jiro | `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`; [liiska OpenAI](https://developers.openai.com/api/docs/models) |
 | Anthropic / `anthropic` | `https://api.anthropic.com/v1/messages` | `ANTHROPIC_API_KEY`; default ma jiro | `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`; [dulmar moodelada Anthropic](https://platform.claude.com/docs/en/models/overview) |
-| Mistral / `mistral` | `https://api.mistral.ai/v1/chat/completions` | `MISTRAL_API_KEY`; default ma jiro | `mistral-large-4`, `mistral-small-4`; [moodelada Mistral](https://docs.mistral.ai/models/) |
+| Mistral / `mistral` | `https://api.mistral.ai/v1/chat/completions` | `MISTRAL_API_KEY`; default ma jiro | `mistral-large-4`, `mistral-small-latest`; [moodelada Mistral](https://docs.mistral.ai/models/) |
 | DeepSeek / `deepseek` | `https://api.deepseek.com/chat/completions` | `DEEPSEEK_API_KEY`; default ma jiro | `deepseek-flash`, `deepseek-v4-pro`; [moodel iyo qiime DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) |
 | Cohere / `cohere` | `https://api.cohere.com/v2/chat` | `COHERE_API_KEY`; default ma jiro | `command-a-plus-05-2026`, `command-a-03-2025`, `command-a-reasoning-08-2025`; [liiska Cohere](https://docs.cohere.com/v2/docs/models) |
 | xAI / `xai` | `https://api.x.ai/v1/chat/completions` | `XAI_API_KEY`; default ma jiro | `grok-4.7`, `grok-4.6`, `grok-4.5`; [liiska xAI](https://docs.x.ai/developers/models) |
@@ -194,11 +199,11 @@ Faahfaahinta moodelada:
   `OLLAMA_API_KEY` iyo `cinwaankaAPI: "https://ollama.com/v1"`; helitaanka
   moodelada cloud-ka Ollama ayaa maamula.
 - **Perplexity:** Adapter-kan wuxuu adeegsadaa Sonar Chat Completions-kii hore.
-  Perplexity wuxuu sheegay in taageerada Sonar Chat Completions dhammaanayso
-  27 Sebtembar 2026, wuxuuna ku talinayaa Agent API-ga cusub. Noocan SDK-ga
-  Agent API-ga ma hirgeliyo; codsiyada synchronous iyo streaming-ga hore
-  waxaa laga yaabaa in loo beddelo qaab cusub. U arag is-dhexgal ku-meel-gaar
-  ah oo xaqiiji ka hor ku-tiirsanaanta.
+  Perplexity wuxuu dhammeeyey taageeradii endpoint-kaas 27 Sebtembar 2026,
+  wuxuuna ku talinayaa Agent API-ga cusub. Perplexity wuxuu sheegay in
+  codsiyada synchronous iyo streaming-gu sii shaqaynayaan iyadoo tartiib
+  loogu beddelayo Agent API; codsiyada Sonar ee asynchronous lama taageero.
+  Noocan SDK-ga Agent API-ga ma hirgeliyo. U arag ku-meel-gaar oo xaqiiji.
 - **Meta:** Waa Meta Model API-ga rasmiga ah ee `api.meta.ai`, furihiisana
   waxaa laga abuuraa dashboard-ka Meta Model API. Wuxuu adeegsanayaa
   `/v1/chat/completions` oo OpenAI-compatible ah. `muse-spark-1.3` iyo
@@ -347,11 +352,19 @@ for await (const chunk of ai.qulqul({ prompt: "Sheeg sheeko gaaban." })) {
 }
 ```
 
-Codsiyada taageera waxaad ku joojin kartaa `AbortSignal`:
+Codsiga qulqulaya waxaad ku joojin kartaa `AbortSignal`:
 
 ```js
 const controller = new AbortController();
-const pending = ai.weydii("Write a long answer.", { signal: controller.signal });
+const consume = async () => {
+  for await (const chunk of ai.qulqul({
+    prompt: "Write a long answer.",
+    signal: controller.signal
+  })) {
+    if (chunk.text) process.stdout.write(chunk.text);
+  }
+};
+const pending = consume();
 setTimeout(() => controller.abort(), 100);
 try {
   await pending;
@@ -361,10 +374,12 @@ try {
 }
 ```
 
-`qulqul({ prompt, signal })` isna wuu aqbalaa signal. Joojintu waxay ku xiran
-tahay habka adeeg-bixiyaha; SDK-gu ma dammaanad qaado in lacag-bixintu isla
-markaas joogsato. Hababka qoraalka guud iyo wada sheekaysigu signal-ka ma sii
-mariyaan.
+`qulqul()` iyo `wakiilAI()` waxay aqbalaan signal joojin. `weydii()` wuxuu
+signal-ka geliyaa codsiga adapter-ka gaarka ah, balse adapter-rada qoraalka
+ee ku jira xirmadu uma gudbiyaan codsiga aan qulqulka lahayn ee API-ga hoose.
+Joojintu waxay ku xiran tahay adeeg-bixiyaha; SDK-gu ma dammaanad qaado in
+lacag-bixintu isla markiiba joogsato. Hababka qoraalka guud iyo wada
+sheekaysigu signal-ka ma sii mariyaan.
 
 HTTP adapter-radu waxay adeegsadaan SSE; OpenAI/Gemini-na stream SDK-gooda.
 Gemini browser adapter-ku ma taageero qulqul. Buffering, moodel taageero,
@@ -408,7 +423,42 @@ habbeeyey. Midkoodna si qarsoodi ah uguma wareejiyo codsi fashilmay.
 Adapter-rada caadiga ahi waxay hadda bixiyaan qoraal iyo qulqul qoraal.
 JSON habaysan, embeddings, warbaahin, ogaanshaha lahjad, iyo wicitaanka
 qalabka agent-ku waxay u baahan yihiin adapter gaar ah oo lagu diiwaangeliyo
-`ai.providers.register()`. Awood aan la taageerin khalad bay keentaa.
+`ai.providers.register()`. Awood aan la taageerin khalad bay keentaa. Adapter-kan
+tijaabada ah wuxuu muujinayaa qaabka lagu daro awoodaha; adeeg AI ma waco,
+mana aha moodel wax-soo-saar:
+
+```js
+const demo = abuurAI({ bixiye: "demo" });
+demo.providers.register("demo", {
+  model: "demo-v1",
+  capabilities: [
+    "text-generation", "conversation", "streaming",
+    "structured-output", "embeddings", "image-understanding",
+    "document-understanding", "image-generation", "video-generation",
+    "video-job-status", "video-retrieval", "video-cancellation",
+    "speech-recognition", "text-to-speech", "tool-calling",
+    "dialect-detection"
+  ],
+  generate: async ({ prompt }) => ({ text: prompt, provider: "demo", model: "demo-v1" }),
+  stream: async function* ({ prompt }) { yield { text: prompt }; },
+  generateStructured: async () => ({ data: { name: "Ayaan", age: 20 } }),
+  createEmbedding: async ({ texts }) => ({ embeddings: texts.map(() => [1, 0]) }),
+  analyzeImage: async ({ prompt }) => ({ text: prompt }),
+  analyzeDocument: async ({ prompt }) => ({ text: prompt }),
+  generateImage: async () => ({ images: ["data:image/png;base64,AA=="] }),
+  generateVideo: async () => ({ id: "demo-1", status: "queued" }),
+  getVideoJob: async ({ id }) => ({ id, status: "completed" }),
+  getVideoResult: async ({ id }) => ({ id, status: "completed", video: "demo-video" }),
+  cancelVideoJob: async ({ id }) => ({ id, status: "cancelled" }),
+  transcribeAudio: async () => ({ text: "Salaan" }),
+  synthesizeSpeech: async () => ({ audio: "demo-audio" }),
+  generateWithTools: async () => ({ finalAnswer: "Demo response" }),
+  detectDialect: async () => ({ dialect: "unknown", confidence: null })
+});
+```
+Tusaalooyinka API-ga ee u baahan awood gaar ah, isticmaal client-kan tijaabada
+ah ee `demo` halkii aad ka isticmaali lahayd client-ka caadiga ah (tusaale,
+`demo.sameeEmbedding(...)`). Wax-soo-saarka ku beddel adapter dhab ah.
 
 ### JSON habaysan oo leh adapter gaar ah
 
@@ -561,23 +611,23 @@ diidaa; khaladaadka adeeg/shabakad waa la gudbiyaa iyadoo furaha la qarinayo.
 | `nadiifi(options?)` | `{ bixiye?: ProviderId }` → `boolean` | `ai.nadiifi()` wuxuu tirtiraa taariikhda oo dhan; hal adeegna waxaa lagu tirtiri karaa `{ bixiye: "gemini" }`. |
 | `doorModel(options?)` | `ModelSelectionOptions` → xogta doorashada | `ai.doorModel({ task: "coding" })`. Adeeg la habbeeyey ayuu u baahan yahay; hawl, adeeg, awood, iyo moodel ayuu hubiyaa. |
 | `awoodahaModelka(options?)` | `{ bixiye?, moodel? }` → warbixin awood | `ai.awoodahaModelka()`. Adapter-ka ayuu ka warramaa, ma aha moodel/akoon toos ah. |
-| `raadsoAqoon(input)` | Su'aal, dukumentiyo, habka raadinta → `{ answer, sources, hasEnoughInformation, provider, model }` | `await ai.raadsoAqoon({ question: "…", documents: [{ id: "a", content: "…" }] })`. Dukumenti qoraal leh ayuu u baahan yahay; semantic-ku embeddings. |
+| `raadsoAqoon(input)` | Su'aal, dukumentiyo, habka raadinta → `{ answer, sources, hasEnoughInformation, provider, model }` | `await ai.raadsoAqoon({ question: "education", documents: [{ id: "a", content: "Education supports communities." }] })`. Dukumenti qoraal leh ayuu u baahan yahay; semantic-ku embeddings. |
 | `ogaawLuqad(input)` | Qoraal ama `{ text }` → xogta luqadda | `ai.ogaawLuqad("Waa salaaman tahay")`. Hab maxalli ah oo qiyaas ah; kalsoonidu lama cabbirin. |
-| `ogaawLahjad(input)` | Qoraal ama `{ text, bixiye?, language? }` → xog ama promise | `ai.ogaawLahjad("Qoraal Soomaali")`. Adapter-rada ku jira ma xaqiijiyaan lahjad; badanaa `unknown` ayey soo celiyaan. |
+| `ogaawLahjad(input)` | Qoraal ama `{ text, bixiye?, language? }` → xog ama promise | `await ai.ogaawLahjad("Qoraal Soomaali")`. Adapter-rada ku jira ma xaqiijiyaan lahjad; badanaa `unknown` ayey soo celiyaan. |
 | `caadiyeQoraal(input)` | Qoraal ama `{ text }` → xarig/xog la caadiyeeyey | `ai.caadiyeQoraal("  Salaan   wanaagsan ")`. Waxay maxalli ahaan caadiyaysaa qoraalka; madhan way diiddaa. |
-| `hadalUqor(input)` | `{ audio, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await ai.hadalUqor({ audio, mimeType: "audio/wav" })`. Waxay u baahan tahay `speech-recognition`; ugu badnaan 25 MB. |
-| `qoraalUhadal(input)` | `{ text, ...AIRequestOptions }` → `Promise<Record>` | `await ai.qoraalUhadal({ text: "Salaan" })`. Waxay u baahan tahay `text-to-speech`. |
-| `wakiilAI(input)` | Hawl, qalab, xad, signal/ogolaansho/xusuus ikhtiyaari → `Promise<Record>` | Eeg [tusaalaha agent](#agent-iyo-qalab-la-diiwaangeliyey). Adapter-ka `generateWithTools` ayuu u baahan yahay; qalabku waa koodh app-ka. |
-| `falanqeeSawir(input)` | `{ image, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | Waxay u baahan tahay `image-understanding`; MIME sawir iyo ugu badnaan 25 MB. |
-| `falanqeeDukumenti(input)` | `{ document, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | Waxay u baahan tahay `document-understanding`; PDF, RTF, DOCX ama text, ugu badnaan 25 MB. |
+| `hadalUqor(input)` | `{ audio, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.hadalUqor({ audio: "data:audio/wav;base64,AA==", mimeType: "audio/wav" })`. Waxay u baahan tahay `speech-recognition`; ugu badnaan 25 MB. |
+| `qoraalUhadal(input)` | `{ text, ...AIRequestOptions }` → `Promise<Record>` | `await demo.qoraalUhadal({ text: "Salaan" })`. Waxay u baahan tahay `text-to-speech`. |
+| `wakiilAI(input)` | Hawl, qalab, xad, signal/ogolaansho/xusuus ikhtiyaari → `Promise<Record>` | `await demo.wakiilAI({ task: "Give a short answer", tools: [] })`. Adapter-ka `generateWithTools` ayuu u baahan yahay; qalabku waa koodh app-ka. |
+| `falanqeeSawir(input)` | `{ image, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.falanqeeSawir({ image: "data:image/png;base64,AA==", prompt: "Describe it" })`. Waxay u baahan tahay `image-understanding`; MIME sawir iyo ugu badnaan 25 MB. |
+| `falanqeeDukumenti(input)` | `{ document, prompt, mimeType?, ...AIRequestOptions }` → `Promise<AIResponse>` | `await demo.falanqeeDukumenti({ document: "Sample text", prompt: "Summarize it" })`. Waxay u baahan tahay `document-understanding`; PDF, RTF, DOCX ama text, ugu badnaan 25 MB. |
 | `sooSaarJSON(input)` | `{ prompt, schema, ...AIRequestOptions }` → `{ data, provider, model, usage? }` | Eeg [JSON habaysan](#json-habaysan-oo-leh-adapter-gaar-ah). Waxay u baahan tahay `generateStructured`; JSON/schema khaldan waa la diidaa. |
-| `sameeEmbedding(input)` | `{ text? \| texts?, ...AIRequestOptions }` → `{ embeddings, provider, model, usage? }` | `await ai.sameeEmbedding({ text: "Somali text" })`. Waxay u baahan tahay `createEmbedding`; cabbirka vectors waa la hubiyaa. |
+| `sameeEmbedding(input)` | `{ text?: string, texts?: string[], ...AIRequestOptions }` → `{ embeddings, provider, model, usage? }` | `await demo.sameeEmbedding({ text: "Somali text" })`. Waxay u baahan tahay `createEmbedding`; cabbirka vectors waa la hubiyaa. |
 | `isuEegEmbedding(left, right)` | Laba `number[]` → cosine similarity `number` | `ai.isuEegEmbedding([1, 0], [0, 1])`. Cabbir isku mid ah oo aan eber ahayn ayaa loo baahan yahay. |
-| `sameeSawir(input)` | `{ prompt, ...AIRequestOptions }` → `{ images, provider, model }` | Waxay u baahan tahay `generateImage`; sawir la adeegsan karo waa inuu yimaadaa. |
-| `sameeMuuqaal(input)` | `{ prompt, ...AIRequestOptions }` → `VideoJob` | Waxay u baahan tahay `generateVideo`; waxay soo celisaa job leh `id` iyo status la taageero. |
-| `hubiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<VideoJob>` | Waxay u baahan tahay `getVideoJob`; id-ga jawaabtu waa inuu waafaqaa. |
-| `helMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | Waxay u baahan tahay `getVideoResult`; natiijo dhammaatay ayaa loo baahan yahay. |
-| `joojiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | Waxay u baahan tahay `cancelVideoJob`. |
+| `sameeSawir(input)` | `{ prompt, ...AIRequestOptions }` → `{ images, provider, model }` | `await demo.sameeSawir({ prompt: "A landscape" })`. Waxay u baahan tahay `generateImage`; sawir la adeegsan karo waa inuu yimaadaa. |
+| `sameeMuuqaal(input)` | `{ prompt, ...AIRequestOptions }` → `VideoJob` | `await demo.sameeMuuqaal({ prompt: "A short clip" })`. Waxay u baahan tahay `generateVideo`; waxay soo celisaa job leh `id` iyo status la taageero. |
+| `hubiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<VideoJob>` | `await demo.hubiMuuqaal({ id: "demo-1" })`. Waxay u baahan tahay `getVideoJob`; id-ga jawaabtu waa inuu waafaqaa. |
+| `helMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | `await demo.helMuuqaal({ id: "demo-1" })`. Waxay u baahan tahay `getVideoResult`; natiijo dhammaatay ayaa loo baahan yahay. |
+| `joojiMuuqaal(input)` | `{ id, ...AIRequestOptions }` → `Promise<unknown>` | `await demo.joojiMuuqaal({ id: "demo-1" })`. Waxay u baahan tahay `cancelVideoJob`. |
 | `qulqul(input)` | `{ prompt, bixiye?, tilmaamo?, language?, signal? }` → `AsyncIterable<AIStreamChunk>` | Eeg [qulqulka](#wada-sheekaysi-qulqul-iyo-joojin). Adapter `stream` leh ayuu u baahan yahay. |
 | `cabirIsticmaalka(options?)` | `{ reset?: boolean }` → sawirka isticmaalka | `ai.cabirIsticmaalka({ reset: true })` wuxuu soo celiyaa dabadeed tirinta eber ka dhigaa. |
 | `getConfig()` | Wax xuduud ah ma leh → habayn ammaan ah | `ai.getConfig()`. Furayaasha sirta ah ma soo celiso. |
@@ -595,8 +645,8 @@ diidaa; khaladaadka adeeg/shabakad waa la gudbiyaa iyadoo furaha la qarinayo.
 
 `src/index.js` wuxuu dhoofiyaa `abuurAI`, `version`,
 `somaliPromptTemplates`, `getSomaliPromptTemplate(id)`, iyo
-`renderSomaliPromptTemplate(id, values)`. Ma jiraan warshado dadweyne oo la
-yiraahdo `createAbuurAI` ama `createSomaliAI`.
+`renderSomaliPromptTemplate(id, values)`. `abuurAI()` waa warshadda keliya ee
+dadweynaha.
 
 ```js
 import {
@@ -638,6 +688,54 @@ console.log((await ai.weydii("Salaan!")).text);
 Gelitaanka Node.js wuxuu taageeraa 12-ka adeeg. Furayaasha wax-soo-saarka ku
 hay secrets-ka server-ka ama deegaanka deployment-ka. Akhrinta `.env` adiga
 ayaa masuul ka ah.
+
+### Node.js backend iyo browser caller oo dhammaystiran
+
+Ku kaydi koodhkan `server.js`, deji `GEMINI_API_KEY`, dabadeed socodsii
+`node server.js`. Browser-ku su'aasha oo keliya ayuu server-ka u diraa;
+furaha gaarka ah wuxuu ku sii jiraa habka Node:
+
+```js
+import { createServer } from "node:http";
+import { abuurAI } from "abuur-ai";
+
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: process.env.GEMINI_API_KEY,
+  moodel: "gemini-3.8-flash"
+});
+
+createServer(async (request, response) => {
+  if (request.method !== "POST" || request.url !== "/api/ask") {
+    response.writeHead(404).end();
+    return;
+  }
+  try {
+    let body = "";
+    for await (const part of request) body += part;
+    const { question } = JSON.parse(body);
+    const answer = await ai.weydii(question);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ text: answer.text }));
+  } catch (error) {
+    console.error("AI request failed:", error.message);
+    response.writeHead(400, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "The request could not be completed." }));
+  }
+}).listen(3000, "127.0.0.1");
+```
+
+Browser-ka backend-ka u wac, hana gelin furaha gaarka ah:
+
+```js
+const response = await fetch("/api/ask", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ question: "Salaan!" })
+});
+if (!response.ok) throw new Error("The server request failed.");
+console.log((await response.json()).text);
+```
 
 ### Browser
 
