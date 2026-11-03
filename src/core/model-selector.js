@@ -7,7 +7,8 @@ export const SUPPORTED_PROVIDER_IDS = [
   "mistral",
   "deepseek",
   "cohere",
-  "xai"
+  "xai",
+  "openrouter"
 ];
 
 export const SUPPORTED_TASKS = [
@@ -33,20 +34,25 @@ const environmentVariables = {
 
 function isProviderConfigured(provider, config) {
   const providerOptions = config.providers?.[provider] || {};
-  const apiKey =
-    providerOptions.apiKey ||
-    (provider === config.provider || (!config.provider && provider === "gemini")
-      ? config.apiKey
-      : null) ||
-    process.env[environmentVariables[provider]];
   const model =
     providerOptions.model ||
     (provider === config.provider || (!config.provider && provider === "gemini")
       ? config.model
       : null) ||
     (provider === "gemini" ? defaultGeminiModel : null);
-
-  return Boolean(apiKey && model);
+  if (config.gateway === "connected") {
+    return provider === "gemini" && Boolean(model);
+  }
+  if (provider === "openrouter") {
+    return Boolean(config.gateway && model);
+  }
+  const apiKey =
+    providerOptions.apiKey ||
+    (provider === config.provider || (!config.provider && provider === "gemini")
+      ? config.apiKey
+      : null) ||
+    globalThis.process?.env?.[environmentVariables[provider]];
+  return Boolean(model && (config.gateway || apiKey));
 }
 
 export function getProviderOptions(provider, config) {

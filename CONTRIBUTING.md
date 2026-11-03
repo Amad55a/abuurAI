@@ -1,6 +1,6 @@
-# Contributing to Somali AI Connect
+# Contributing to Abuur AI
 
-Mahadsanid — thank you for considering a contribution. Somali AI Connect is a
+Mahadsanid — thank you for considering a contribution. Abuur AI is a
 Somali-led, Somali-first project, and contributions from Somali developers in
 Somalia and across the diaspora are welcome. You do not need to be an expert
 or a native Somali speaker to help.

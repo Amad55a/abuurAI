@@ -1,6 +1,6 @@
 # Community Code of Conduct
 
-Somali AI Connect is a Somali-led, Somali-first developer community for people
+Abuur AI is a Somali-led, Somali-first developer project for people
 in Somalia and around the world. We welcome contributors of every background,
 experience level, gender, identity, disability status, language variety, and
 place of residence.
@@ -45,5 +45,5 @@ raises a concern in good faith is not acceptable.
 
 ## Acknowledgment
 
-By participating in Somali AI Connect community spaces, you agree to follow
+By participating in Abuur AI community spaces, you agree to follow
 this code. Thank you for helping build a respectful Somali developer community.

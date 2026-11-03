@@ -1,7 +1,7 @@
 {
-  "name": "somali-ai-connect",
-  "version": "0.1.0",
-  "description": "A Somali-first JavaScript SDK for connecting to multiple AI providers.",
+  "name": "abuur-ai",
+  "version": "0.2.0",
+  "description": "A Somali-first JavaScript AI SDK with simple provider-independent APIs.",
   "repository": {
     "type": "git",
     "url": "https://github.com/Amad55a/somali-ai-connect.git"
@@ -11,13 +11,30 @@
     "url": "https://github.com/Amad55a/somali-ai-connect/issues"
   },
   "type": "module",
+  "types": "./src/index.d.ts",
   "main": "./src/index.js",
+  "module": "./src/index.js",
+  "browser": "./src/browser.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./src/index.d.ts",
+      "browser": "./src/browser.js",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./browser": {
+      "types": "./src/index.d.ts",
+      "import": "./src/browser.js",
+      "default": "./src/browser.js"
+    }
   },
   "files": [
+    "README.md",
+    "README.so.md",
+    "ADVANCED.md",
+    "SECURITY.md",
     "src",
-    ".env.example"
+    "assets"
   ],
   "engines": {
     "node": ">=22.0.0"
@@ -30,7 +47,7 @@
     "ai",
     "javascript",
     "sdk",
-    "somali-ai"
+    "abuur-ai"
   ],
   "license": "MIT",
   "dependencies": {

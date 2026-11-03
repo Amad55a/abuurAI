@@ -1,6 +1,6 @@
 # Contributors
 
-We appreciate everyone who helps improve Somali AI Connect.
+We appreciate everyone who helps improve Abuur AI.
 
 Contributor credits should be added only after a contribution is verified and
 with the contributor's preferred name or handle. This file begins without

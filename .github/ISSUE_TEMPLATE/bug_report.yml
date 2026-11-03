@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Somali AI Connect.
+description: Report a reproducible problem in Abuur AI.
 title: "[Bug]: "
 body:
   - type: markdown

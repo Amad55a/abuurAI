@@ -15,6 +15,8 @@ test("SDK accepts custom configuration", () => {
     model: "test-model"
   });
 
+  assert.equal(ai.getConfig().bixiye, "openai");
+  assert.equal(ai.getConfig().moodel, "test-model");
   assert.equal(ai.getConfig().provider, "openai");
   assert.equal(ai.getConfig().model, "test-model");
 });
@@ -29,6 +31,9 @@ test("SDK does not expose private or unrecognized config values", () => {
 
   assert.deepEqual(ai.getConfig(), {
     language: "automatic",
+    bixiye: "test",
+    moodel: null,
+    tilmaamo: "Always respond professionally in Somali.",
     provider: "test",
     model: null,
     systemPrompt: "Always respond professionally in Somali.",
@@ -40,11 +45,11 @@ test("SDK does not expose private or unrecognized config values", () => {
 test("SDK validates private keys and global prompt configuration", () => {
   assert.throws(
     () => createSomaliAI({ apiKey: 123 }),
-    /API key must be a non-empty string/
+    /furahaAPI \(API key\) must be a non-empty string/
   );
   assert.throws(
     () => createSomaliAI({ systemPrompt: 123 }),
-    /systemPrompt must be a non-empty string/
+    /tilmaamo \(systemPrompt\) must be a non-empty string/
   );
   assert.throws(
     () => createSomaliAI(null),

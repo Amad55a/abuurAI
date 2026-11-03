@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" role="img" aria-labelledby="title description">
+  <title id="title">Abuur AI</title>
+  <desc id="description">A seed-shaped symbol with connected paths, representing Somali creativity and technology.</desc>
+  <defs>
+    <linearGradient id="seed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4a340"/>
+      <stop offset="1" stop-color="#e66e32"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="180" rx="28" fill="#102b3f"/>
+  <path d="M75 132c-30-8-45-35-35-63C49 43 84 30 127 39c-2 43-16 82-52 93Z" fill="url(#seed)"/>
+  <path d="M49 115c16-25 34-43 60-62" fill="none" stroke="#fff4dd" stroke-linecap="round" stroke-width="7"/>
+  <circle cx="77" cy="93" r="6" fill="#fff4dd"/>
+  <circle cx="96" cy="73" r="6" fill="#fff4dd"/>
+  <path d="M77 93 96 73l20 8" fill="none" stroke="#fff4dd" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+  <circle cx="116" cy="81" r="5" fill="#43b89c"/>
+  <text x="159" y="106" fill="#fffaf1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="700" letter-spacing="-1">Abuur</text>
+  <text x="330" y="106" fill="#f4a340" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="500" letter-spacing="-1">AI</text>
+  <text x="162" y="137" fill="#b9c9d2" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" letter-spacing="2">AF-SOOMAALI • JAVASCRIPT SDK</text>
+</svg>

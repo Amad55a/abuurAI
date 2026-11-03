@@ -1,10 +1,10 @@
-
 import "dotenv/config";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 
-const ai = createSomaliAI({
-  provider: "gemini",
-  model: "gemini-2.5-flash"
+const ai = abuurAI({
+  bixiye: "gemini",
+  furahaAPI: process.env.GEMINI_API_KEY,
+  moodel: "gemini-2.5-flash"
 });
 
 const tests = [
@@ -26,5 +26,6 @@ for (const [name, run] of tests) {
   } catch (error) {
     console.error(`\n--- ${name} FAILED ---`);
     console.error(error.message);
+    process.exitCode = 1;
   }
 }

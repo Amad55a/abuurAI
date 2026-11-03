@@ -30,7 +30,7 @@ function createTextOperation(provider, promptBuilder, defaultLanguage, systemPro
     return provider.generate({
       prompt,
       language: options.language || defaultLanguage,
-      systemPrompt,
+      systemPrompt: options.tilmaamo || options.instructions || systemPrompt,
       operationInstructions
     });
   };
@@ -351,7 +351,7 @@ export function createConversation(
     const response = await provider.generate({
       prompt,
       language: options.language || defaultLanguage,
-      systemPrompt
+      systemPrompt: options.tilmaamo || options.instructions || systemPrompt
     });
 
     history.push({ role: "User", text: message });

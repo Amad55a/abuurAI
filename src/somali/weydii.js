@@ -1,8 +1,3 @@
-/**
- * Somali AI Connect
- * Somali question method
- */
-
 export function createWeydii(provider, systemPrompt) {
   return async function weydii(question, options = {}) {
     if (!question || typeof question !== "string") {
@@ -16,7 +11,8 @@ export function createWeydii(provider, systemPrompt) {
     return provider.generate({
       prompt: question,
       language: options.language || "automatic",
-      systemPrompt
+      systemPrompt: options.tilmaamo || options.instructions || systemPrompt,
+      signal: options.signal
     });
   };
 }

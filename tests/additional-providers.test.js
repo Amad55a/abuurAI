@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSomaliAI } from "../src/index.js";
+import { abuurAI } from "../src/index.js";
 import { createAnthropicProvider } from "../src/providers/anthropic-provider.js";
 import { createMistralProvider } from "../src/providers/mistral-provider.js";
 import { createDeepSeekProvider } from "../src/providers/deepseek-provider.js";
@@ -133,11 +133,11 @@ for (const provider of providers) {
   test(`${provider.name} uses its API endpoint and maps generated text`, async () => {
     const apiKey = `FAKE_${provider.identifier.toUpperCase()}_KEY`;
     let request;
-    const ai = createSomaliAI({
-      provider: provider.identifier,
-      apiKey,
-      model: "configured-test-model",
-      systemPrompt: "Custom Somali instructions.",
+    const ai = abuurAI({
+      bixiye: provider.identifier,
+      furahaAPI: apiKey,
+      moodel: "configured-test-model",
+      tilmaamo: "Custom Somali instructions.",
       fetch: async (url, options) => {
         request = {
           url,
@@ -163,11 +163,11 @@ for (const provider of providers) {
 
   test(`${provider.name} supports Somali text operations`, async () => {
     let request;
-    const ai = createSomaliAI({
-      provider: provider.identifier,
-      apiKey: "fake-somali-operations-key",
-      model: "configured-test-model",
-      systemPrompt: "Custom Somali instructions.",
+    const ai = abuurAI({
+      bixiye: provider.identifier,
+      furahaAPI: "fake-somali-operations-key",
+      moodel: "configured-test-model",
+      tilmaamo: "Custom Somali instructions.",
       fetch: async (url, options) => {
         request = {
           url,

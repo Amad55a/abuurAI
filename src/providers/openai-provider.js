@@ -10,7 +10,10 @@ export function createOpenAIProvider(options = {}) {
   }
 
   const client = options.client || (
-    apiKey ? new OpenAI({ apiKey }) : null
+    apiKey ? new OpenAI({
+      apiKey,
+      ...(options.fetch ? { fetch: options.fetch } : {})
+    }) : null
   );
 
   if (!client) {

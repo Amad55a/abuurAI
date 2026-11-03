@@ -1,13 +1,11 @@
 import { defaultConfig } from "./config.js";
 import { createProviderManager } from "../providers/provider-manager.js";
 import { createWeydii } from "../somali/weydii.js";
-import { createOpenAIProvider } from "../providers/openai-provider.js";
-import { createGeminiProvider } from "../providers/gemini-provider.js";
-import { createAnthropicProvider } from "../providers/anthropic-provider.js";
-import { createMistralProvider } from "../providers/mistral-provider.js";
-import { createDeepSeekProvider } from "../providers/deepseek-provider.js";
-import { createCohereProvider } from "../providers/cohere-provider.js";
-import { createXAIProvider } from "../providers/xai-provider.js";
+import { createCloudflareGatewayProvider } from "../providers/cloudflare-gateway-provider.js";
+import {
+  createConnectedGatewayProvider,
+  validateConnectedGatewayEndpoint
+} from "../providers/connected-gateway-provider.js";
 import { createTextOperations, createConversation } from "../somali/operations.js";
 import { ogaawLuqad as detectLanguage } from "../somali/language-detection.js";
 import { caadiyeQoraal as normalizeText } from "../somali/normalize.js";
@@ -18,6 +16,7 @@ import {
 import {
   createModelSelector,
   getProviderOptions,
+  SUPPORTED_PROVIDER_IDS,
   SUPPORTED_TASKS
 } from "./model-selector.js";
 import { createUsageTracker } from "./usage-tracker.js";
@@ -27,16 +26,6 @@ import {
   SUPPORTED_CAPABILITIES
 } from "./capabilities.js";
 import { validateJsonSchema } from "../utils/validate-json-schema.js";
-
-const providerFactories = {
-  openai: createOpenAIProvider,
-  gemini: createGeminiProvider,
-  anthropic: createAnthropicProvider,
-  mistral: createMistralProvider,
-  deepseek: createDeepSeekProvider,
-  cohere: createCohereProvider,
-  xai: createXAIProvider
-};
 
 const taskByMethod = {
   weydii: "conversation",
@@ -65,7 +54,145 @@ const taskByMethod = {
   dibUhabeeCode: "coding"
 };
 
-export function createSomaliAI(options = {}) {
+function copyAlias(options, somaliName, englishNames) {
+  const present = englishNames.filter((name) => options[name] !== undefined);
+  if (
+    present.length > 1 &&
+    present.some((name) => options[name] !== options[present[0]])
+  ) {
+    throw new Error(
+      `Conflicting compatibility aliases for ${somaliName} (${present.join(", ")}).`
+    );
+  }
+  if (options[somaliName] !== undefined) {
+    if (present.some((name) => options[name] !== options[somaliName])) {
+      throw new Error(
+        `Use ${somaliName} or its compatibility alias (${present.join(", ")}), not conflicting values.`
+      );
+    }
+    return options[somaliName];
+  }
+  return present.length ? options[present[0]] : undefined;
+}
+
+function normalizeConfiguration(options) {
+  if (options === null || typeof options !== "object" || Array.isArray(options)) {
+    return options;
+  }
+
+  const normalized = { ...options };
+  const aliases = [
+    ["bixiye", ["provider"]],
+    ["furahaAPI", ["apiKey"]],
+    ["moodel", ["model"]],
+    ["tilmaamo", ["systemPrompt", "instructions"]]
+  ];
+
+  for (const [somaliName, englishNames] of aliases) {
+    const value = copyAlias(options, somaliName, englishNames);
+    if (value !== undefined) {
+      normalized[englishNames[0] === "systemPrompt" ? "systemPrompt" : englishNames[0]] = value;
+    }
+    delete normalized[somaliName];
+    if (somaliName === "tilmaamo") delete normalized.instructions;
+  }
+
+  if (
+    normalized.providers !== null &&
+    typeof normalized.providers === "object" &&
+    !Array.isArray(normalized.providers)
+  ) {
+    normalized.providers = Object.fromEntries(
+      Object.entries(normalized.providers).map(([name, providerOptions]) => {
+        if (
+          providerOptions === null ||
+          typeof providerOptions !== "object" ||
+          Array.isArray(providerOptions)
+        ) {
+          return [name, providerOptions];
+        }
+        const providerConfig = { ...providerOptions };
+        for (const [somaliName, englishName] of [
+          ["furahaAPI", "apiKey"],
+          ["moodel", "model"]
+        ]) {
+          const value = copyAlias(providerOptions, somaliName, [englishName]);
+          if (value !== undefined) providerConfig[englishName] = value;
+          delete providerConfig[somaliName];
+        }
+        return [name, providerConfig];
+      })
+    );
+  }
+
+  return normalized;
+}
+
+function normalizeRequestOptions(options) {
+  if (options === null || typeof options !== "object" || Array.isArray(options)) {
+    return options;
+  }
+  const normalized = { ...options };
+  for (const [somaliName, englishName] of [
+    ["bixiye", "provider"],
+    ["moodel", "model"]
+  ]) {
+    const value = copyAlias(options, somaliName, [englishName]);
+    if (value !== undefined) normalized[englishName] = value;
+    delete normalized[somaliName];
+  }
+  return normalized;
+}
+
+function validateGatewayConfiguration(gateway) {
+  if (gateway === null || typeof gateway !== "object" || Array.isArray(gateway)) {
+    throw new Error("gateway must be a Cloudflare gateway configuration object.");
+  }
+  if (gateway.type !== "cloudflare") {
+    throw new Error('gateway.type must be "cloudflare".');
+  }
+  if (typeof gateway.accountId !== "string" ||
+    !/^[a-f0-9]{32}$/i.test(gateway.accountId)) {
+    throw new Error("gateway.accountId must be a 32-character Cloudflare account ID.");
+  }
+  if (typeof gateway.gatewayId !== "string" ||
+    !/^[a-zA-Z0-9_-]{1,64}$/.test(gateway.gatewayId)) {
+    throw new Error("gateway.gatewayId must be a non-empty gateway identifier.");
+  }
+  if (typeof gateway.endpoint !== "string" || !gateway.endpoint.trim()) {
+    throw new Error("gateway.endpoint must be a non-empty Worker URL.");
+  }
+
+  let endpoint;
+  try {
+    endpoint = new URL(gateway.endpoint);
+  } catch {
+    throw new Error("gateway.endpoint must be a valid absolute URL.");
+  }
+  const localHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  if (
+    (endpoint.protocol !== "https:" &&
+      !(endpoint.protocol === "http:" && localHosts.has(endpoint.hostname))) ||
+    endpoint.username ||
+    endpoint.password ||
+    endpoint.search ||
+    endpoint.hash
+  ) {
+    throw new Error(
+      "gateway.endpoint must use HTTPS (HTTP is allowed only for localhost) and must not contain credentials, query, or fragment."
+    );
+  }
+
+  return {
+    type: "cloudflare",
+    accountId: gateway.accountId,
+    gatewayId: gateway.gatewayId,
+    endpoint: endpoint.toString().replace(/\/$/, "")
+  };
+}
+
+export function createAbuurAI(inputOptions = {}, providerFactories) {
+  const options = normalizeConfiguration(inputOptions);
   if (options === null || typeof options !== "object" || Array.isArray(options)) {
     throw new Error("Configuration options must be an object.");
   }
@@ -75,7 +202,44 @@ export function createSomaliAI(options = {}) {
     options.apiKey !== null &&
     (typeof options.apiKey !== "string" || !options.apiKey.trim())
   ) {
-    throw new Error("API key must be a non-empty string.");
+    throw new Error("furahaAPI (API key) must be a non-empty string.");
+  }
+
+  const gateway = options.gateway === undefined
+    ? null
+    : options.gateway === "connected"
+      ? "connected"
+      : validateGatewayConfiguration(options.gateway);
+
+  if (gateway === "connected") {
+    const selectedProvider = options.provider || "gemini";
+    if (selectedProvider !== "gemini") {
+      throw new Error('gateway: "connected" currently supports only the Gemini provider.');
+    }
+    if (options.mode === "auto") {
+      throw new Error('gateway: "connected" does not support automatic provider selection.');
+    }
+    if (options.apiKey || options.providers?.gemini?.apiKey) {
+      throw new Error(
+        'Do not configure a Gemini API key with gateway: "connected"; credentials belong on the trusted Worker/Gateway.'
+      );
+    }
+  } else if (options.gatewayEndpoint !== undefined) {
+    throw new Error("gatewayEndpoint can only be used with gateway: \"connected\".");
+  }
+
+  const gatewayEndpoint = gateway === "connected"
+    ? validateConnectedGatewayEndpoint(options.gatewayEndpoint)
+    : undefined;
+  const gatewayTimeoutMs = options.gatewayTimeoutMs === undefined
+    ? 30_000
+    : options.gatewayTimeoutMs;
+  if (
+    !Number.isSafeInteger(gatewayTimeoutMs) ||
+    gatewayTimeoutMs < 1 ||
+    gatewayTimeoutMs > 120_000
+  ) {
+    throw new Error("gatewayTimeoutMs must be an integer from 1 to 120000.");
   }
 
   if (
@@ -83,7 +247,7 @@ export function createSomaliAI(options = {}) {
     options.systemPrompt !== null &&
     (typeof options.systemPrompt !== "string" || !options.systemPrompt.trim())
   ) {
-    throw new Error("systemPrompt must be a non-empty string.");
+    throw new Error("tilmaamo (systemPrompt) must be a non-empty string.");
   }
 
   if (options.mode !== undefined && !["manual", "auto"].includes(options.mode)) {
@@ -102,7 +266,7 @@ export function createSomaliAI(options = {}) {
   if (
     options.providerPreference !== undefined &&
     (!Array.isArray(options.providerPreference) ||
-      options.providerPreference.some((provider) => !providerFactories[provider]))
+      options.providerPreference.some((provider) => !SUPPORTED_PROVIDER_IDS.includes(provider)))
   ) {
     throw new Error(
       "providerPreference must be an array of supported provider identifiers."
@@ -124,7 +288,7 @@ export function createSomaliAI(options = {}) {
       }
       if (
         !Array.isArray(preferences) ||
-        preferences.some((provider) => !providerFactories[provider])
+        preferences.some((provider) => !SUPPORTED_PROVIDER_IDS.includes(provider))
       ) {
         throw new Error(
           `Provider preferences for "${task}" must be an array of supported identifiers.`
@@ -135,8 +299,11 @@ export function createSomaliAI(options = {}) {
 
   if (options.providers) {
     for (const [name, providerOptions] of Object.entries(options.providers)) {
-      if (!providerFactories[name]) {
+      if (!SUPPORTED_PROVIDER_IDS.includes(name)) {
         throw new Error(`Provider "${name}" is not supported.`);
+      }
+      if (gateway === "connected" && name !== "gemini") {
+        throw new Error('gateway: "connected" currently supports only the Gemini provider.');
       }
       if (
         providerOptions === null ||
@@ -151,14 +318,19 @@ export function createSomaliAI(options = {}) {
         (typeof providerOptions.apiKey !== "string" ||
           !providerOptions.apiKey.trim())
       ) {
-        throw new Error(`${name} API key must be a non-empty string.`);
+        throw new Error(`${name} furahaAPI (API key) must be a non-empty string.`);
+      }
+      if (name === "openrouter" && providerOptions.apiKey) {
+        throw new Error(
+          "OpenRouter credentials must be configured server-side on the Cloudflare Worker."
+        );
       }
       if (
         providerOptions.model !== undefined &&
         (typeof providerOptions.model !== "string" ||
           !providerOptions.model.trim())
       ) {
-        throw new Error(`Model for provider "${name}" must be a non-empty string.`);
+        throw new Error(`moodel for provider "${name}" must be a non-empty string.`);
       }
       if (
         providerOptions.capabilities !== undefined &&
@@ -176,7 +348,10 @@ export function createSomaliAI(options = {}) {
 
   const config = {
     ...defaultConfig,
-    ...options
+    ...options,
+    gateway,
+    gatewayEndpoint,
+    gatewayTimeoutMs
   };
 
   const providerManager = createProviderManager();
@@ -195,6 +370,58 @@ export function createSomaliAI(options = {}) {
   }
 
   function getProvider(name) {
+    if (config.gateway === "connected") {
+      if (name !== "gemini") {
+        throw new Error('gateway: "connected" currently supports only the Gemini provider.');
+      }
+      if (providerManager.list().includes(name)) {
+        return providerManager.get(name);
+      }
+      const providerOptions = getProviderOptions(name, config);
+      const provider = createConnectedGatewayProvider({
+        provider: name,
+        model: providerOptions.model,
+        endpoint: config.gatewayEndpoint,
+        timeoutMs: config.gatewayTimeoutMs,
+        fetch: providerOptions.fetch
+      });
+      providerManager.register(name, provider);
+      return provider;
+    }
+
+    if (config.gateway) {
+      if (!SUPPORTED_PROVIDER_IDS.includes(name)) {
+        throw new Error(
+          `Provider "${name}" is not supported through Cloudflare gateway mode.`
+        );
+      }
+
+      if (providerManager.list().includes(name)) {
+        return providerManager.get(name);
+      }
+
+      const providerOptions = getProviderOptions(name, config);
+      if (!providerOptions.model) {
+        throw new Error(
+          `A model must be configured for provider "${name}" in Cloudflare gateway mode.`
+        );
+      }
+      const provider = createCloudflareGatewayProvider({
+        gateway: config.gateway,
+        provider: name,
+        model: providerOptions.model,
+        fetch: providerOptions.fetch
+      });
+      providerManager.register(name, provider);
+      return provider;
+    }
+
+    if (name === "openrouter") {
+      throw new Error(
+        'Provider "openrouter" is supported only through Cloudflare gateway mode.'
+      );
+    }
+
     if (providerManager.list().includes(name)) {
       return providerManager.get(name);
     }
@@ -327,6 +554,10 @@ export function createSomaliAI(options = {}) {
   }
 
   async function weydii(question, options = {}) {
+    options = normalizeRequestOptions(options);
+    if (options === null || typeof options !== "object" || Array.isArray(options)) {
+      throw new Error("weydii options must be an object.");
+    }
     if (
       question &&
       typeof question === "object" &&
@@ -355,11 +586,13 @@ export function createSomaliAI(options = {}) {
 
   function withProvider(operationName, method) {
     return async (...args) => {
-      const options = args[args.length - 1];
-      const explicitProvider =
-        options && !Array.isArray(options) && typeof options === "object"
-          ? options.provider
-          : undefined;
+      const lastArgument = args[args.length - 1];
+      const options = normalizeRequestOptions(lastArgument);
+      if (options !== lastArgument) args[args.length - 1] = options;
+      const explicitProvider = options && !Array.isArray(options) &&
+        typeof options === "object"
+        ? options.provider
+        : undefined;
       const providerName = resolveProviderName(
         explicitProvider,
         taskByMethod[operationName] || "conversation"
@@ -398,6 +631,7 @@ export function createSomaliAI(options = {}) {
   };
 
   async function wadaSheekeysi(message, options = {}) {
+    options = normalizeRequestOptions(options);
     if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new Error("Options must be an object.");
     }
@@ -408,6 +642,7 @@ export function createSomaliAI(options = {}) {
   }
 
   async function siiWad(message, options = {}) {
+    options = normalizeRequestOptions(options);
     if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new Error("Options must be an object.");
     }
@@ -418,6 +653,7 @@ export function createSomaliAI(options = {}) {
   }
 
   function nadiifi(options = {}) {
+    options = normalizeRequestOptions(options);
     if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new Error("Options must be an object.");
     }
@@ -432,12 +668,27 @@ export function createSomaliAI(options = {}) {
   }
 
   function getConfig() {
+    const publicProvider = config.provider;
+    const publicModel = config.model;
+    const publicInstructions = config.systemPrompt;
     return {
       language: config.language,
-      provider: config.provider,
-      model: config.model,
-      systemPrompt: config.systemPrompt,
+      bixiye: publicProvider,
+      moodel: publicModel,
+      tilmaamo: publicInstructions,
+      provider: publicProvider,
+      model: publicModel,
+      systemPrompt: publicInstructions,
       mode: config.mode || "manual",
+      ...(config.gateway === "connected"
+        ? {
+            gateway: "connected",
+            gatewayEndpoint: config.gatewayEndpoint,
+            gatewayTimeoutMs: config.gatewayTimeoutMs
+          }
+        : config.gateway
+          ? { gateway: { ...config.gateway } }
+          : {}),
       ...(config.providerPreference !== undefined
         ? { providerPreference: [...config.providerPreference] }
         : {}),
@@ -462,10 +713,15 @@ export function createSomaliAI(options = {}) {
   }
 
   function doorModel(options = {}) {
+    options = normalizeRequestOptions(options);
     if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new Error("doorModel options must be an object.");
     }
-    return modelSelector.select(options);
+    return modelSelector.select({
+      ...options,
+      preferredProvider: options.provider || options.preferredProvider,
+      ...(options.model ? { allowedModels: [options.model] } : {})
+    });
   }
 
   function ogaawLuqad(input) {
@@ -486,6 +742,7 @@ export function createSomaliAI(options = {}) {
   }
 
   function awoodahaModelka(options = {}) {
+    options = normalizeRequestOptions(options);
     if (options === null || typeof options !== "object" || Array.isArray(options)) {
       throw new Error("awoodahaModelka expects an options object.");
     }
@@ -493,14 +750,14 @@ export function createSomaliAI(options = {}) {
     const names = options.provider
       ? [options.provider]
       : getConfiguredProviderNames();
-    if (options.provider && !providerFactories[options.provider] &&
+    if (options.provider && !SUPPORTED_PROVIDER_IDS.includes(options.provider) &&
       !providerManager.list().includes(options.provider)) {
       throw new Error(`Provider "${options.provider}" is not supported.`);
     }
 
     if (options.model !== undefined &&
       (typeof options.model !== "string" || !options.model.trim())) {
-      throw new Error("model must be a non-empty model identifier string.");
+      throw new Error("moodel (model) must be a non-empty model identifier string.");
     }
 
     const providers = names.map((name) => {
@@ -1178,6 +1435,7 @@ export function createSomaliAI(options = {}) {
   }
 
   async function raadsoAqoon(input = {}) {
+    input = normalizeRequestOptions(input);
     if (input === null || typeof input !== "object" || Array.isArray(input)) {
       throw new Error("raadsoAqoon expects an options object.");
     }
@@ -1352,7 +1610,7 @@ export function createSomaliAI(options = {}) {
     const response = await provider.generate({
       prompt: `Answer the question using only the source passages below. If they do not contain the answer, say that the documents do not provide enough information. Do not invent facts or source IDs. Cite supporting document IDs in square brackets.\n\nSources:\n${context}\n\nQuestion:\n${input.question}`,
       language: input.language || config.language,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: input.tilmaamo || input.instructions || config.systemPrompt,
       operationInstructions:
         "Use only provided source passages. Never invent facts or citations."
     });
@@ -1372,6 +1630,7 @@ export function createSomaliAI(options = {}) {
   }
 
   async function* qulqul(input = {}) {
+    input = normalizeRequestOptions(input);
     if (input === null || typeof input !== "object" || Array.isArray(input)) {
       throw new Error("qulqul expects an options object.");
     }
@@ -1400,7 +1659,7 @@ export function createSomaliAI(options = {}) {
     for await (const chunk of provider.stream({
       prompt: input.prompt,
       language: input.language || config.language,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: input.tilmaamo || input.instructions || config.systemPrompt,
       operationInstructions: input.operationInstructions,
       signal: input.signal
     })) {
@@ -1451,3 +1710,5 @@ export function createSomaliAI(options = {}) {
     }
   };
 }
+
+export const createSomaliAI = createAbuurAI;

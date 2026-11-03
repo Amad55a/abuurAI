@@ -1,8 +1,3 @@
-/**
- * Somali AI Connect
- * Functional Provider Manager
- */
-
 export function createProviderManager() {
   const providers = new Map();
 

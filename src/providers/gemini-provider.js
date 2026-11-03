@@ -18,7 +18,10 @@ export function createGeminiProvider(options = {}) {
     throw new Error("Please specify a Gemini model.");
   }
 
-  const client = options.client || new GoogleGenAI({ apiKey });
+  const client = options.client || new GoogleGenAI({
+    apiKey,
+    ...(options.fetch ? { httpOptions: { fetch: options.fetch } } : {})
+  });
   const model = options.model;
 
   async function generate({

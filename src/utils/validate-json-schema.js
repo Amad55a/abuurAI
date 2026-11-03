@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
-
 const supportedTypes = new Set([
   "object",
   "array",
@@ -22,6 +20,27 @@ const allowedKeywords = new Set([
   "maxLength",
   "additionalProperties"
 ]);
+
+function areJsonValuesEqual(left, right) {
+  if (Object.is(left, right)) {
+    return true;
+  }
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== "object" ||
+    typeof right !== "object" ||
+    Array.isArray(left) !== Array.isArray(right)
+  ) {
+    return false;
+  }
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length &&
+    leftKeys.every((key) =>
+      Object.hasOwn(right, key) && areJsonValuesEqual(left[key], right[key])
+    );
+}
 
 function validateSchemaDefinition(schema, ancestors = new WeakSet()) {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
@@ -106,7 +125,7 @@ export function validateJsonSchema(value, schema, path = "$") {
   }
 
   if (schema.enum && !schema.enum.some((candidate) =>
-    isDeepStrictEqual(candidate, value)
+    areJsonValuesEqual(candidate, value)
   )) {
     errors.push(`${path} must match one of the allowed values.`);
   }

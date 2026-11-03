@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="so">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Tusaale browser oo isticmaalaya Abuur AI.">
+    <title>Abuur AI — Tusaalaha Browser-ka</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, sans-serif; }
+      body { margin: 0; background: #f5f8f6; color: #17352b; }
+      main { box-sizing: border-box; max-width: 760px; margin: 3rem auto; padding: 2rem; }
+      h1 { color: #087c59; }
+      form, section { display: grid; gap: 1rem; }
+      textarea, select, button { box-sizing: border-box; width: 100%; padding: .8rem; font: inherit; }
+      textarea { min-height: 9rem; }
+      button { border: 0; border-radius: .4rem; background: #087c59; color: white; cursor: pointer; }
+      button:disabled { opacity: .6; cursor: wait; }
+      #error { color: #a12622; }
+      #answer { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Abuur AI</h1>
+      <p>Tusaale fudud oo su'aalaha ugu diraaya Gateway-kaaga.</p>
+      <form id="request-form">
+        <label for="prompt-template">Dooro tilmaam hordhac ah</label>
+        <select id="prompt-template" aria-label="Tilmaanta hordhaca"></select>
+        <label for="request-prompt">Su'aashaada ama codsigaaga</label>
+        <textarea id="request-prompt" required></textarea>
+        <button id="submit" type="submit">Dir codsiga</button>
+      </form>
+      <p id="error" role="alert"></p>
+      <section aria-live="polite">
+        <h2>Jawaabta</h2>
+        <p id="answer"></p>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,7 +1,4 @@
-/**
- * Somali AI Connect
- * Core configuration
- */
+/** Core defaults shared by Abuur AI entry points. */
 
 export const defaultConfig = {
   mode: "manual",
@@ -9,5 +6,6 @@ export const defaultConfig = {
   provider: null,
   model: null,
   apiKey: null,
-  systemPrompt: null
+  systemPrompt: null,
+  gateway: null
 };
