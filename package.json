@@ -2,14 +2,14 @@
   "name": "abuur-ai",
   "version": "0.2.2",
   "description": "A Somali-first JavaScript AI SDK for twelve AI providers, with Node.js and browser support.",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Amad55a/somali-ai-connect.git"
-  },
-  "homepage": "https://github.com/Amad55a/somali-ai-connect#readme",
-  "bugs": {
-    "url": "https://github.com/Amad55a/somali-ai-connect/issues"
-  },
+"repository": {
+  "type": "git",
+  "url": "git+https://github.com/Amad55a/abuurAI.git"
+},
+"homepage": "https://github.com/Amad55a/abuurAI#readme",
+"bugs": {
+  "url": "https://github.com/Amad55a/abuurAI/issues"
+},
   "type": "module",
   "types": "./src/index.d.ts",
   "main": "./src/index.js",
