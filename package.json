@@ -1,6 +1,6 @@
 {
   "name": "abuur-ai",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A Somali-first JavaScript SDK for working with multiple AI providers through one consistent interface.",
   "repository": {
     "type": "git",
