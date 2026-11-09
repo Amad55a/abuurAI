@@ -24,7 +24,7 @@ personal information in issues, pull requests, or test fixtures.
 2. Clone your fork and enter the project directory:
 
    ```sh
-   git clone https://github.com/Amad55a/somali-ai-connect.git
+   git clone https://github.com/Amad55a/abuurAI.git
    cd REPOSITORY
    ```
 
@@ -32,7 +32,7 @@ personal information in issues, pull requests, or test fixtures.
 3. Add the source repository as `upstream`:
 
    ```sh
-   git remote add upstream https://github.com/Amad55a/somali-ai-connect.git
+   git remote add upstream https://github.com/Amad55a/abuurAI.git
    ```
 
 4. Create a focused feature branch from the default branch:
